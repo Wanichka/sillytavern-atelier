@@ -1,0 +1,1 @@
+{"name":"wani-atelier","version":"0.1.0","private":true,"type":"module","scripts":{"test":"node --test tests/core.test.mjs","check":"node --check index.js && node --check core.js"}}
