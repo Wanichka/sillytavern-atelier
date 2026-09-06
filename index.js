@@ -1,8 +1,8 @@
 import {
-    KEY, DEFAULT, FONTS, LAYOUTS, VERSION,
+    KEY, FONTS, VERSION,
     normalizeSettings, normalizeName, isSafeFont, newThemeId,
-    readStore, emptyStore, characterKey, themeIdFor, settingsFor,
-    backgroundUrl, backgroundNames, variables,
+    readStore, characterKey, themeIdFor, settingsFor,
+    backgroundUrl, backgroundNames, themeVariables,
 } from './core.js';
 
 const ctx = () => SillyTavern.getContext();
@@ -14,19 +14,19 @@ const el = (tag, cls, text) => {
     return node;
 };
 
+const btn = (text, fn, cls) => {
+    const button = el('button', 'wa-btn' + (cls ? ' ' + cls : ''), text);
+    button.type = 'button';
+    button.onclick = fn;
+    return button;
+};
+
 const iconBtn = (icon, title, fn, cls) => {
     const button = el('button', 'wa-btn wa-icon-btn' + (cls ? ' ' + cls : ''));
     button.type = 'button';
     button.title = title;
     button.setAttribute('aria-label', title);
     button.append(el('i', 'fa-solid ' + icon));
-    button.onclick = fn;
-    return button;
-};
-
-const btn = (text, fn, cls) => {
-    const button = el('button', 'wa-btn' + (cls ? ' ' + cls : ''), text);
-    button.type = 'button';
     button.onclick = fn;
     return button;
 };
@@ -51,7 +51,6 @@ function start() {
     let busy = false;
     let localFonts = null;
 
-    // Несохранённые правки по каждой теме отдельно.
     const drafts = new Map();
     const hostListeners = new AbortController();
 
@@ -63,7 +62,6 @@ function start() {
     const themeList = () => Object.entries(store.themes)
         .sort((a, b) => a[1].name.localeCompare(b[1].name, 'ru'));
 
-    // Правки идут в черновик, пока не нажата «Сохранить тему».
     function draft() {
         if (!editingId) return null;
         if (!drafts.has(editingId)) {
@@ -86,11 +84,10 @@ function start() {
 
     const header = el('header', 'wa-header');
     const hostControls = el('span', 'wa-host-controls');
-    header.append(el('strong', '', 'Оформление · Atelier'), hostControls, btn('×', () => toggle(false), 'wa-icon'));
+    header.append(el('strong', '', 'Оформление · Atelier'), hostControls,
+        iconBtn('fa-xmark', 'Закрыть', () => toggle(false), 'wa-close'));
 
     const body = el('div', 'wa-body');
-    const column = el('div', 'wa-column');
-    const previewPane = el('div', 'wa-preview-pane');
 
     const enable = el('input');
     enable.type = 'checkbox';
@@ -104,19 +101,6 @@ function start() {
     const enableLabel = el('label', 'wa-check');
     enableLabel.htmlFor = 'wa-enable';
     enableLabel.append(enable, document.createTextNode('Применять оформление Atelier'));
-
-    const skinToggle = el('input');
-    skinToggle.type = 'checkbox';
-    skinToggle.id = 'wa-skin';
-    skinToggle.checked = store.skin;
-    skinToggle.onchange = () => {
-        store.skin = skinToggle.checked;
-        persist();
-        apply();
-    };
-    const skinLabel = el('label', 'wa-check');
-    skinLabel.htmlFor = 'wa-skin';
-    skinLabel.append(skinToggle, document.createTextNode('Базовый вид Таверны'));
 
     const picker = el('select');
     picker.classList.add('wa-picker');
@@ -154,12 +138,7 @@ function start() {
         apply();
     }));
 
-    const preview = el('section', 'wa-scope');
-    preview.id = 'wa-preview';
-    previewPane.append(el('h4', 'wa-subtitle', 'Предпросмотр'), preview);
-
-    column.append(enableLabel, skinLabel, themeRow, bindRow, nav, content, status, foot);
-    body.append(column, previewPane);
+    body.append(enableLabel, themeRow, bindRow, nav, content, status, foot);
     panel.append(header, body);
 
     const launcher = btn('✦', () => toggle(), 'wa-launcher-btn');
@@ -170,12 +149,6 @@ function start() {
     const live = el('style');
     live.id = 'wa-live-style';
     document.head.append(live);
-
-    const skin = el('link');
-    skin.id = 'wa-skin-style';
-    skin.rel = 'stylesheet';
-    skin.href = new URL('./skin.css', import.meta.url).href;
-    document.head.append(skin);
     document.body.append(panel, launcher);
 
     // ---- поля ------------------------------------------------------------
@@ -184,7 +157,6 @@ function start() {
         const current = draft();
         if (!current) return;
         current[key] = value;
-        renderPreview();
         apply();
         status.textContent = 'Есть несохранённые изменения';
     }
@@ -197,7 +169,6 @@ function start() {
         return wrapper;
     }
 
-    // Квадратик цвета, поле hex и, где нужно, непрозрачность — как в Moonlit.
     function colorRow(label, key, opacityKey) {
         const row = el('div', 'wa-color');
         row.append(el('span', 'wa-color-label', label));
@@ -255,10 +226,7 @@ function start() {
             input.append(option);
         }
         input.value = draft()[key];
-        input.onchange = () => {
-            set(key, input.value);
-            renderContent();
-        };
+        input.onchange = () => set(key, input.value);
         return field(label, input);
     }
 
@@ -285,8 +253,6 @@ function start() {
         ['colors', 'Цвета'],
         ['background', 'Фон'],
         ['text', 'Текст'],
-        ['messages', 'Сообщения'],
-        ['avatars', 'Портреты'],
     ];
 
     for (const [id, label] of sections) {
@@ -300,8 +266,7 @@ function start() {
 
     function characterName() {
         const list = ctx().characters || [];
-        const found = list.find(x => 'char:' + x.avatar === currentKey);
-        return found?.name || null;
+        return list.find(x => 'char:' + x.avatar === currentKey)?.name || null;
     }
 
     function render() {
@@ -325,7 +290,6 @@ function start() {
         renderContent();
     }
 
-    // Управление темой живёт рядом с её названием, иконками.
     function renderThemeRow() {
         themeRow.replaceChildren(picker, iconBtn('fa-plus', 'Новая тема', createTheme));
         bindRow.replaceChildren();
@@ -367,10 +331,9 @@ function start() {
         );
 
         const assigned = currentKey && store.assignments[currentKey] === editingId;
-        const pin = iconBtn(
-            'fa-thumbtack',
+        const pin = iconBtn('fa-thumbtack',
             currentKey
-                ? (assigned ? 'Открепить от этого персонажа' : 'Закрепить за этим персонажем')
+                ? (assigned ? `Открепить от: ${characterName() || 'этот персонаж'}` : `Закрепить за: ${characterName() || 'этот персонаж'}`)
                 : 'В групповом чате закрепить нельзя',
             () => {
                 if (assigned) delete store.assignments[currentKey];
@@ -378,8 +341,7 @@ function start() {
                 persist();
                 render();
                 apply();
-            },
-        );
+            });
         pin.disabled = !currentKey;
         pin.setAttribute('aria-pressed', String(!!assigned));
 
@@ -392,6 +354,19 @@ function start() {
         star.setAttribute('aria-pressed', String(store.defaultThemeId === editingId));
 
         bindRow.append(pin, star, exportBtn(), importControl());
+    }
+
+    function createTheme() {
+        const name = prompt('Название темы', 'Новая тема');
+        if (name === null) return;
+        const id = newThemeId();
+        store.themes[id] = { name: normalizeName(name), ...normalizeSettings(null) };
+        if (!store.defaultThemeId) store.defaultThemeId = id;
+        editingId = id;
+        persist();
+        render();
+        apply();
+        status.textContent = 'Тема создана';
     }
 
     function exportBtn() {
@@ -452,44 +427,20 @@ function start() {
         content.replaceChildren();
 
         if (!editingId) {
-            renderNoThemes();
-            renderPreview();
+            content.append(
+                el('p', 'wa-help', 'Тем пока нет. Создай первую — назови как хочешь, потом закрепишь за персонажем.'),
+                btn('Новая тема', createTheme, 'wa-primary'),
+            );
+            status.textContent = '';
             return;
         }
 
         if (tab === 'colors') renderColors();
         if (tab === 'background') renderAlbum();
         if (tab === 'text') renderText();
-        if (tab === 'messages') renderMessages();
-        if (tab === 'avatars') renderAvatars();
 
-        renderPreview();
         status.textContent = dirty() ? 'Есть несохранённые изменения' : 'Все изменения сохранены';
     }
-
-    function renderNoThemes() {
-        content.append(
-            el('p', 'wa-help', 'Тем пока нет. Создай первую — назови как хочешь, потом назначишь любому персонажу.'),
-            btn('Новая тема', createTheme, 'wa-primary'),
-        );
-        status.textContent = '';
-    }
-
-    function createTheme() {
-        const name = prompt('Название темы', 'Новая тема');
-        if (name === null) return;
-        const id = newThemeId();
-        store.themes[id] = { name: normalizeName(name), ...normalizeSettings(null) };
-        if (!store.defaultThemeId) store.defaultThemeId = id;
-        editingId = id;
-        persist();
-        tab = 'colors';
-        render();
-        apply();
-        status.textContent = 'Тема создана';
-    }
-
-    // ---- цвета -----------------------------------------------------------
 
     function renderColors() {
         content.append(el('h5', 'wa-subtitle', 'Текст'));
@@ -498,31 +449,29 @@ function start() {
             colorRow('Реплики', 'quote'),
             colorRow('Курсив', 'italic'),
             colorRow('Подчёркивание', 'underline'),
-            colorRow('Акцент и имена', 'accent'),
+            colorRow('Акцент', 'accent'),
+            colorRow('Тень текста', 'shadow'),
         );
         content.append(el('h5', 'wa-subtitle', 'Подложки'));
         content.append(
             colorRow('Сообщения персонажа', 'assistant', 'assistantOpacity'),
             colorRow('Мои сообщения', 'user', 'userOpacity'),
             colorRow('Панели', 'panel', 'panelOpacity'),
+            colorRow('Фон чата', 'chat', 'chatOpacity'),
             colorRow('Границы', 'border'),
         );
     }
 
-    // ---- текст -----------------------------------------------------------
-
     function renderText() {
-        // Одно поле: можно выбрать из списка, можно вписать своё.
         const input = el('input');
         input.type = 'text';
         input.value = draft().font;
         input.setAttribute('list', 'wa-fonts');
         input.spellcheck = false;
 
-        const options = [...new Set([...FONTS, ...(localFonts || [])])].filter(isSafeFont);
         const datalist = el('datalist');
         datalist.id = 'wa-fonts';
-        for (const value of options) {
+        for (const value of [...new Set([...FONTS, ...(localFonts || [])])].filter(isSafeFont)) {
             const option = el('option');
             option.value = value;
             datalist.append(option);
@@ -541,10 +490,12 @@ function start() {
         content.append(field('Шрифт сообщений', input), datalist);
 
         if (localFonts === null) {
-            content.append(btn('Добавить шрифты с компьютера', loadLocalFonts));
-            content.append(el('p', 'wa-help', 'Выбери из списка или впиши название вручную — применится сразу. Кнопка добавляет в список все шрифты системы: Chrome спросит разрешение, в Firefox и на планшете так нельзя.'));
+            content.append(
+                btn('Добавить шрифты с компьютера', loadLocalFonts),
+                el('p', 'wa-help', 'Выбери из списка или впиши название вручную. Кнопка добавляет в список шрифты системы — работает в Chrome, спросит разрешение.'),
+            );
         } else {
-            content.append(el('p', 'wa-help', `Выбери из списка или впиши вручную. Из системы подтянуто шрифтов: ${localFonts.length}.`));
+            content.append(el('p', 'wa-help', `Из системы подтянуто шрифтов: ${localFonts.length}.`));
         }
 
         content.append(
@@ -572,49 +523,6 @@ function start() {
         renderContent();
     }
 
-    // ---- сообщения -------------------------------------------------------
-
-    function renderMessages() {
-        content.append(select('Макет сообщений', 'layout', LAYOUTS));
-
-        if (draft().layout === 'sides') {
-            const check = el('input');
-            check.type = 'checkbox';
-            check.checked = draft().reverse;
-            check.onchange = () => set('reverse', check.checked);
-            content.append(field('Поменять стороны местами', check));
-        }
-
-        content.append(
-            range('Ширина чата', 'width', 500, 1800),
-            range('Скругление сообщений', 'radius', 0, 40),
-            range('Поля внутри сообщения', 'padding', 8, 40),
-        );
-    }
-
-    // ---- портреты --------------------------------------------------------
-
-    function renderAvatars() {
-        content.append(
-            range('Ширина портрета', 'avatarWidth', 48, 240),
-            range('Скругление портрета', 'avatarRadius', 0, 120),
-            select('Как показывать', 'avatarFit', [
-                ['full', 'Целиком, без обрезки'],
-                ['crop', 'Заполнить область с обрезкой'],
-            ]),
-        );
-
-        if (draft().avatarFit === 'crop') {
-            content.append(
-                range('Пропорция области (ширина к высоте)', 'avatarRatio', 0.4, 2, .05),
-                range('Что видно по вертикали', 'focus', 0, 100),
-                el('p', 'wa-help', '0 — верх картинки, 100 — низ.'),
-            );
-        } else {
-            content.append(el('p', 'wa-help', 'Картинка показывается целиком, поэтому пропорция и точка обзора не нужны.'));
-        }
-    }
-
     // ---- фон -------------------------------------------------------------
 
     function renderAlbum() {
@@ -626,8 +534,7 @@ function start() {
                 renderContent();
             }),
         );
-        content.append(top);
-        content.append(el('p', 'wa-help', 'Без своего фона тема берёт фон темы по умолчанию, а если и его нет — оставляет фон Таверны.'));
+        content.append(top, el('p', 'wa-help', 'Без своего фона тема берёт фон темы по умолчанию, а если и его нет — оставляет фон Таверны.'));
 
         const upload = el('input');
         upload.type = 'file';
@@ -730,7 +637,6 @@ function start() {
         }
     }
 
-    // Свой фон → фон темы по умолчанию → фон Таверны без вмешательства.
     function resolvedBackground(settings) {
         const candidates = [settings.background];
         const fallback = store.defaultThemeId && store.themes[store.defaultThemeId]?.background;
@@ -741,125 +647,53 @@ function start() {
         return '';
     }
 
-    // ---- предпросмотр ----------------------------------------------------
+    // ---- применение ------------------------------------------------------
 
-    function previewMessage(isUser, char) {
-        const message = el('article', 'mes');
-        message.setAttribute('is_user', String(isUser));
-
-        const wrapper = el('div', 'mesAvatarWrapper');
-        const avatar = el('div', 'avatar');
-        const src = isUser
-            ? document.querySelector('#chat .mes[is_user="true"] .avatar img')?.getAttribute('src')
-            : char?.avatar ? '/thumbnail?type=avatar&file=' + encodeURIComponent(char.avatar) : '';
-        const name = isUser ? ctx().name1 || 'Пользователь' : char?.name || 'Персонаж';
-
-        if (src) {
-            const pic = el('img');
-            pic.src = src;
-            pic.alt = name;
-            avatar.append(pic);
-        } else {
-            avatar.textContent = isUser ? 'Я' : '✦';
-        }
-        wrapper.append(avatar);
-
-        const block = el('div', 'mes_block');
-        const heading = el('div', 'ch_name');
-        heading.append(el('span', 'name_text', name));
-        block.append(heading);
-
-        const text = el('div', 'mes_text');
-        if (isUser) {
-            const p = el('p');
-            p.append(el('q', '', 'Если выйдем утром, успеем добраться до бухты?'));
-            text.append(p);
-        } else {
-            const p1 = el('p', '', 'Он развернул карту и придвинул её к краю стола. За открытым окном слышались голоса с причала; ветер шевелил бумагу.');
-            const p2 = el('p');
-            p2.append(el('q', '', 'Успеем. Только возьми куртку — у воды холодно.'), ' Он отметил тропинку карандашом и поднял взгляд.');
-            const p3 = el('p');
-            p3.append(el('em', '', 'Всё необходимое уже было собрано.'), ' Осталось дождаться утра.');
-            text.append(p1, p2, p3);
-        }
-        block.append(text);
-
-        message.append(wrapper, block);
-        return message;
-    }
-
-    function renderPreview() {
-        const settings = editingId ? normalizeSettings(draft()) : settingsFor(store, currentKey);
-        preview.style.cssText = variables(settings);
-        preview.dataset.waLayout = settings.layout;
-        preview.dataset.waReverse = String(settings.reverse);
-        preview.dataset.waFit = settings.avatarFit;
-
-        const bg = resolvedBackground(settings);
-        const dim = '#000000' + Math.round(settings.dim * 2.55).toString(16).padStart(2, '0');
-        preview.style.backgroundImage = bg
-            ? `linear-gradient(${dim},${dim}),url("${backgroundUrl(bg)}")`
-            : '';
-        preview.style.backgroundSize = settings.fit;
-
-        const list = ctx().characters || [];
-        const char = list.find(x => 'char:' + x.avatar === currentKey) || list[ctx().characterId];
-        preview.replaceChildren(previewMessage(true, char), previewMessage(false, char));
-    }
-
-    // ---- применение к странице ------------------------------------------
-
-    // Пока открыта тема с несохранёнными правками, страница показывает их же.
     function activeSettings() {
         if (editingId && drafts.has(editingId)) return normalizeSettings(drafts.get(editingId));
         if (editingId) return normalizeSettings(store.themes[editingId]);
         return settingsFor(store, currentKey);
     }
 
+    // Разметку сообщений Atelier не трогает: расположение портретов, ширина
+    // чата и общий вид остаются за темой оформления. Здесь только цвета,
+    // фон и типографика.
     function apply() {
-        const chat = document.getElementById('chat');
         document.body.classList.toggle('wa-enabled', store.enabled);
-        document.body.classList.toggle('wa-skin', store.enabled && store.skin);
-        chat?.classList.toggle('wa-scope', store.enabled);
 
         if (!store.enabled) {
             live.textContent = '';
             return;
         }
 
-        const settings = activeSettings();
-        const bg = resolvedBackground(settings);
-        if (chat) {
-            chat.dataset.waLayout = settings.layout;
-            chat.dataset.waReverse = String(settings.reverse);
-            chat.dataset.waFit = settings.avatarFit;
+        const s = activeSettings();
+        const bg = resolvedBackground(s);
+
+        const rules = [
+            `body.wa-enabled{${themeVariables(s)}}`,
+            `body.wa-enabled #chat .mes_text{`
+            + `font-family:${s.font};`
+            + `font-size:${s.fontSize}px;`
+            + `line-height:${s.line};`
+            + `}`,
+            `body.wa-enabled #chat .mes_text p{margin-bottom:${s.gap}px;}`,
+            `body.wa-enabled #chat .mes_text p:last-child{margin-bottom:0;}`,
+        ];
+
+        if (bg) {
+            rules.push(
+                `body.wa-enabled #bg1,body.wa-enabled #bg_custom{`
+                + `background-image:linear-gradient(rgba(0,0,0,${s.dim / 100}),rgba(0,0,0,${s.dim / 100})),url("${backgroundUrl(bg)}")!important;`
+                + `background-size:${s.fit}!important;`
+                + `filter:blur(${s.blur}px)!important;`
+                + `}`,
+            );
         }
 
-        const smartTheme = [
-            `--SmartThemeBodyColor:${settings.text};`,
-            `--SmartThemeEmColor:${settings.italic};`,
-            `--SmartThemeQuoteColor:${settings.quote};`,
-            `--SmartThemeUnderlineColor:${settings.underline};`,
-            `--SmartThemeBorderColor:${settings.border};`,
-            `--SmartThemeBlurTintColor:var(--wa-panel);`,
-            `--SmartThemeUserMesBlurTintColor:var(--wa-user);`,
-            `--SmartThemeBotMesBlurTintColor:var(--wa-assistant);`,
-            `--SmartThemeChatTintColor:transparent;`,
-        ].join('');
-
-        const backgroundRule = bg
-            ? `background-image:linear-gradient(rgba(0,0,0,${settings.dim / 100}),rgba(0,0,0,${settings.dim / 100})),url("${backgroundUrl(bg)}")!important;`
-            + `background-size:${settings.fit}!important;`
-            + `filter:blur(${settings.blur}px)!important;`
-            : '';
-
-        live.textContent =
-            `body.wa-enabled{${variables(settings)}${smartTheme}}`
-            + `body.wa-enabled #sheld{max-width:${settings.width}px;}`
-            + (backgroundRule ? `body.wa-enabled #bg1,body.wa-enabled #bg_custom{${backgroundRule}}` : '');
+        live.textContent = rules.join('');
     }
 
-    // ---- открытие и место под панель ------------------------------------
+    // ---- открытие --------------------------------------------------------
 
     function reserve() {
         document.body.classList.toggle('wa-editor-open', open && panel.dataset.rptDocked !== 'true');
@@ -881,8 +715,6 @@ function start() {
         if (open) render();
     }
 
-    // ---- Roleplay Tools --------------------------------------------------
-
     function connect() {
         const host = window.WaniRoleplayTools;
         if (host?.version !== 1) return;
@@ -903,13 +735,9 @@ function start() {
 
     window.addEventListener('wani-roleplay-tools:ready', connect, { signal: hostListeners.signal });
 
-    // ---- события Таверны -------------------------------------------------
-
     c.eventSource.on(c.eventTypes.CHAT_CHANGED, () => {
         currentKey = characterKey(ctx());
-        const applied = themeIdFor(store, currentKey);
-        // Если правки не начаты, показываем тему нового персонажа.
-        if (!dirty()) editingId = applied;
+        if (!dirty()) editingId = themeIdFor(store, currentKey);
         apply();
         render();
     });
@@ -945,8 +773,6 @@ function start() {
             moved = false;
         }
     }, true);
-
-    // ---- запуск ----------------------------------------------------------
 
     render();
     apply();
