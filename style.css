@@ -13,7 +13,7 @@
     position: fixed;
     left: 10px;
     top: 55px;
-    width: 360px;
+    width: 720px;
     max-width: calc(100vw - 20px);
     height: calc(100dvh - 75px);
     z-index: 2000;
@@ -50,40 +50,76 @@
     text-transform: uppercase;
     opacity: .9;
 }
-#wa-editor .wa-header button { width: 30px; }
+#wa-editor .wa-header .wa-icon { width: 30px; flex: none; }
 
 #wa-editor .wa-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
     padding: 12px;
     overflow: auto;
     flex: 1;
     min-height: 0;
+    align-content: start;
 }
+/* Две колонки, когда панель отдельная и экран это позволяет. */
+@media (min-width: 1100px) {
+    #wa-editor:not([data-rpt-docked=true]) .wa-body {
+        grid-template-columns: 330px minmax(0, 1fr);
+        overflow: hidden;
+    }
+    #wa-editor:not([data-rpt-docked=true]) .wa-column,
+    #wa-editor:not([data-rpt-docked=true]) .wa-preview-pane { overflow: auto; min-height: 0; }
+}
+#wa-editor .wa-column { display: flex; flex-direction: column; min-width: 0; }
+#wa-editor .wa-preview-pane { min-width: 0; }
+#wa-editor .wa-subtitle {
+    margin: 16px 0 6px;
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    opacity: .7;
+}
+#wa-editor .wa-picker { margin-bottom: 8px; }
+#wa-editor .wa-where {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 12px;
+    opacity: .85;
+}
+#wa-editor .wa-hint { color: var(--SmartThemeQuoteColor, #cd956c); }
+#wa-editor .wa-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+#wa-editor .wa-actions .wa-btn { flex: 1 1 auto; }
+#wa-editor .wa-danger { color: #e08a8a; }
+#wa-editor input[type=file] { position: absolute; opacity: 0; pointer-events: none; }
+label.wa-btn { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 
 #wa-editor .wa-tabs {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 5px;
-    margin: 14px 0;
+    margin: 12px 0;
 }
 
-#wa-editor button {
+#wa-editor .wa-btn {
     cursor: pointer;
     width: auto;
     margin: 0;
     padding: 7px 9px;
     min-height: 34px;
 }
-#wa-editor button[aria-pressed=true] {
+#wa-editor .wa-btn[aria-pressed=true] {
     outline: 1px solid var(--SmartThemeQuoteColor, #cd956c);
     background: color-mix(in srgb, var(--SmartThemeQuoteColor, #cd956c) 20%, transparent);
 }
-#wa-editor button, #wa-editor select {
+#wa-editor .wa-btn, #wa-editor select {
     background: var(--SmartThemeBlurTintColor, #17252b);
     color: var(--SmartThemeBodyColor, #eee);
     border: 1px solid var(--SmartThemeBorderColor, #456);
     border-radius: 7px;
 }
-#wa-editor button:hover { filter: brightness(1.15); }
+#wa-editor .wa-btn:hover { filter: brightness(1.15); }
 #wa-editor select { width: 100%; min-width: 0; padding: 8px; }
 
 #wa-editor .wa-field {
@@ -104,7 +140,39 @@
 #wa-editor input[type=range] { width: 100%; }
 #wa-editor input[type=color] { width: 100%; height: 32px; padding: 2px; }
 #wa-editor input[type=file] { max-width: 100%; font-size: 12px; }
-#wa-editor .wa-color-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+#wa-editor .wa-color { margin: 8px 0; }
+#wa-editor .wa-color-label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    opacity: .8;
+    margin-bottom: 4px;
+}
+#wa-editor .wa-color-line { display: flex; align-items: center; gap: 8px; }
+#wa-editor .wa-swatch {
+    width: 34px;
+    height: 28px;
+    flex: none;
+    padding: 2px;
+    border: 1px solid var(--SmartThemeBorderColor, #456);
+    border-radius: 6px;
+    background: none;
+    cursor: pointer;
+}
+#wa-editor .wa-hex {
+    width: 100px;
+    flex: none;
+    padding: 5px 7px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    background: var(--SmartThemeBlurTintColor, #17252b);
+    color: var(--SmartThemeBodyColor, #eee);
+    border: 1px solid var(--SmartThemeBorderColor, #456);
+    border-radius: 6px;
+}
+#wa-editor .wa-opacity { flex: 1; min-width: 60px; }
+#wa-editor .wa-color-line output { font-size: 11px; width: 26px; text-align: right; opacity: .8; }
 #wa-editor .wa-check { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 
 #wa-editor .wa-footer {
@@ -132,7 +200,7 @@
     gap: 6px;
     margin-top: 12px;
 }
-#wa-editor .wa-album button { padding: 3px; min-width: 0; display: block; }
+#wa-editor .wa-album .wa-btn { padding: 3px; min-width: 0; display: block; }
 #wa-editor .wa-album img { width: 100%; aspect-ratio: 1.5; object-fit: cover; display: block; }
 #wa-editor .wa-album span {
     display: block;
@@ -180,7 +248,7 @@
     overflow: hidden;
 }
 #rpt-shell #wa-editor[data-rpt-docked=true] .wa-body { overflow: auto; }
-#rpt-shell #wa-editor[data-rpt-docked=true] > .wa-header > button { display: none; }
+#rpt-shell #wa-editor[data-rpt-docked=true] > .wa-header > .wa-icon { display: none; }
 #wa-editor .wa-host-controls { display: flex; }
 
 @media (min-width: 850px) {
@@ -265,10 +333,18 @@
     width: 100%;
     height: auto;
     max-height: 420px;
-    object-fit: var(--wa-avatarFit);
-    object-position: center calc(var(--wa-focus) * 1%);
     border-radius: var(--wa-avatarRadius);
     display: block;
+}
+/* Обрезка возможна только когда у области есть своя высота. */
+.wa-scope[data-wa-fit=crop] > .mes > .mesAvatarWrapper > .avatar {
+    aspect-ratio: var(--wa-avatarRatio);
+}
+.wa-scope[data-wa-fit=crop] > .mes > .mesAvatarWrapper > .avatar > img {
+    height: 100%;
+    max-height: none;
+    object-fit: cover;
+    object-position: center calc(var(--wa-focus) * 1%);
 }
 .wa-scope > .mes > .mesAvatarWrapper > .mesIDDisplay,
 .wa-scope > .mes > .mesAvatarWrapper > .mes_timer,
@@ -307,8 +383,8 @@
 /* ---------- Макеты ---------- */
 
 /* Портреты с разных сторон: у одной из сторон колонки меняются местами. */
-.wa-scope[data-wa-layout=opposite][data-wa-reverse=false] > .mes[is_user="true"],
-.wa-scope[data-wa-layout=opposite][data-wa-reverse=true] > .mes[is_user="false"] {
+.wa-scope[data-wa-layout=sides][data-wa-reverse=false] > .mes[is_user="true"],
+.wa-scope[data-wa-layout=sides][data-wa-reverse=true] > .mes[is_user="false"] {
     grid-template-columns: minmax(0, 1fr) var(--wa-avatarWidth);
     grid-template-areas: "body avatar";
 }
@@ -333,14 +409,14 @@
     background-color: var(--wa-panel);
     background-position: center;
 }
-#wa-preview > .mes { padding: 12px; gap: 10px; }
+#wa-preview > .mes { gap: 10px; }
 #wa-preview > .mes:last-child { margin-bottom: 0; }
-#wa-preview[data-wa-layout=ripple] > .mes,
-#wa-preview[data-wa-layout=opposite] > .mes {
+#wa-preview[data-wa-layout=side] > .mes,
+#wa-preview[data-wa-layout=sides] > .mes {
     grid-template-columns: min(var(--wa-avatarWidth), 32%) minmax(0, 1fr);
 }
-#wa-preview[data-wa-layout=opposite][data-wa-reverse=false] > .mes[is_user="true"],
-#wa-preview[data-wa-layout=opposite][data-wa-reverse=true] > .mes[is_user="false"] {
+#wa-preview[data-wa-layout=sides][data-wa-reverse=false] > .mes[is_user="true"],
+#wa-preview[data-wa-layout=sides][data-wa-reverse=true] > .mes[is_user="false"] {
     grid-template-columns: minmax(0, 1fr) min(var(--wa-avatarWidth), 32%);
 }
 #wa-preview .mes_text { font-size: min(var(--wa-fontSize), 16px); }
