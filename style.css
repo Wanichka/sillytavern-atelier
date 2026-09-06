@@ -1,19 +1,14 @@
 /* =========================================================================
-   Wani Atelier — оформление
-   Разметка сообщения в SillyTavern 1.18 (шесть прямых детей .mes):
-     .for_checkbox | input.del_checkbox | .mesAvatarWrapper |
-     .swipe_left   | .mes_block         | .swipeRightBlock
-   В раскладке участвуют только .mesAvatarWrapper и .mes_block,
-   остальные выводятся из потока, иначе они делят ширину с текстом.
+   Wani Atelier — оформление самой панели редактора.
+   Разметку сообщений и общий вид Таверны расширение не трогает: этим
+   занимается тема оформления.
    ========================================================================= */
-
-/* ---------- Панель редактора ---------- */
 
 #wa-editor {
     position: fixed;
     left: 10px;
     top: 55px;
-    width: 720px;
+    width: 340px;
     max-width: calc(100vw - 20px);
     height: calc(100dvh - 75px);
     z-index: 2000;
@@ -50,36 +45,18 @@
     text-transform: uppercase;
     opacity: .9;
 }
-#wa-editor .wa-header .wa-icon { width: 30px; flex: none; }
 
 #wa-editor .wa-body {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 14px;
     padding: 12px;
     overflow: auto;
     flex: 1;
     min-height: 0;
-    align-content: start;
 }
-/* Две колонки, когда панель отдельная и экран это позволяет. */
-@media (min-width: 1100px) {
-    #wa-editor:not([data-rpt-docked=true]) .wa-body {
-        grid-template-columns: 330px minmax(0, 1fr);
-        overflow: hidden;
-    }
-    #wa-editor:not([data-rpt-docked=true]) .wa-column,
-    #wa-editor:not([data-rpt-docked=true]) .wa-preview-pane { overflow: auto; min-height: 0; }
-}
-#wa-editor .wa-column { display: flex; flex-direction: column; min-width: 0; }
-#wa-editor .wa-preview-pane { min-width: 0; }
-#wa-editor .wa-subtitle {
-    margin: 16px 0 6px;
-    font-size: 11px;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    opacity: .7;
-}
+
+#wa-editor .wa-check { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+
+/* ---------- ряд управления темой ---------- */
+
 #wa-editor .wa-theme-row {
     display: flex;
     align-items: center;
@@ -103,20 +80,11 @@
     outline: 1px solid var(--SmartThemeQuoteColor, #cd956c);
     background: color-mix(in srgb, var(--SmartThemeQuoteColor, #cd956c) 22%, transparent);
 }
-#wa-editor .wa-icon-btn.wa-danger { color: #e08a8a; }
-#wa-editor .wa-where {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    font-size: 12px;
-    opacity: .85;
-}
-#wa-editor .wa-hint { color: var(--SmartThemeQuoteColor, #cd956c); }
-#wa-editor .wa-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
-#wa-editor .wa-actions .wa-btn { flex: 1 1 auto; }
+#wa-editor .wa-icon-btn:disabled { opacity: .35; cursor: default; }
 #wa-editor .wa-danger { color: #e08a8a; }
-#wa-editor input[type=file] { position: absolute; opacity: 0; pointer-events: none; }
-label.wa-btn { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+#wa-editor .wa-close { margin-left: auto; }
+
+/* ---------- вкладки и кнопки ---------- */
 
 #wa-editor .wa-tabs {
     display: grid;
@@ -124,27 +92,55 @@ label.wa-btn { display: inline-flex; align-items: center; justify-content: cente
     gap: 5px;
     margin: 12px 0;
 }
-
 #wa-editor .wa-btn {
     cursor: pointer;
     width: auto;
     margin: 0;
     padding: 7px 9px;
     min-height: 34px;
-}
-#wa-editor .wa-btn[aria-pressed=true] {
-    outline: 1px solid var(--SmartThemeQuoteColor, #cd956c);
-    background: color-mix(in srgb, var(--SmartThemeQuoteColor, #cd956c) 20%, transparent);
-}
-#wa-editor .wa-btn, #wa-editor select {
     background: var(--SmartThemeBlurTintColor, #17252b);
     color: var(--SmartThemeBodyColor, #eee);
     border: 1px solid var(--SmartThemeBorderColor, #456);
     border-radius: 7px;
 }
 #wa-editor .wa-btn:hover { filter: brightness(1.15); }
-#wa-editor select { width: 100%; min-width: 0; padding: 8px; }
+#wa-editor .wa-btn[aria-pressed=true] {
+    outline: 1px solid var(--SmartThemeQuoteColor, #cd956c);
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor, #cd956c) 20%, transparent);
+}
+#wa-editor .wa-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+#wa-editor .wa-actions .wa-btn { flex: 1 1 auto; }
+label.wa-btn { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 
+#wa-editor select {
+    width: 100%;
+    min-width: 0;
+    padding: 8px;
+    background: var(--SmartThemeBlurTintColor, #17252b);
+    color: var(--SmartThemeBodyColor, #eee);
+    border: 1px solid var(--SmartThemeBorderColor, #456);
+    border-radius: 7px;
+}
+#wa-editor input[type=text] {
+    width: 100%;
+    padding: 7px 9px;
+    background: var(--SmartThemeBlurTintColor, #17252b);
+    color: var(--SmartThemeBodyColor, #eee);
+    border: 1px solid var(--SmartThemeBorderColor, #456);
+    border-radius: 7px;
+}
+#wa-editor input[type=file] { position: absolute; opacity: 0; pointer-events: none; }
+#wa-editor input[type=range] { width: 100%; }
+
+/* ---------- поля ---------- */
+
+#wa-editor .wa-subtitle {
+    margin: 16px 0 6px;
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    opacity: .7;
+}
 #wa-editor .wa-field {
     display: flex;
     flex-direction: column;
@@ -160,17 +156,9 @@ label.wa-btn { display: inline-flex; align-items: center; justify-content: cente
     text-transform: uppercase;
     opacity: .85;
 }
-#wa-editor input[type=range] { width: 100%; }
-#wa-editor input[type=text],
-#wa-editor input[type=search] {
-    width: 100%;
-    padding: 7px 9px;
-    background: var(--SmartThemeBlurTintColor, #17252b);
-    color: var(--SmartThemeBodyColor, #eee);
-    border: 1px solid var(--SmartThemeBorderColor, #456);
-    border-radius: 7px;
-}
-#wa-editor input[type=file] { max-width: 100%; font-size: 12px; }
+
+/* ---------- строка цвета ---------- */
+
 #wa-editor .wa-color { margin: 8px 0; }
 #wa-editor .wa-color-label {
     display: block;
@@ -197,33 +185,11 @@ label.wa-btn { display: inline-flex; align-items: center; justify-content: cente
     padding: 5px 7px;
     font-family: ui-monospace, monospace;
     font-size: 12px;
-    background: var(--SmartThemeBlurTintColor, #17252b);
-    color: var(--SmartThemeBodyColor, #eee);
-    border: 1px solid var(--SmartThemeBorderColor, #456);
-    border-radius: 6px;
 }
-#wa-editor .wa-opacity { flex: 1; min-width: 60px; }
+#wa-editor .wa-opacity { flex: 1; min-width: 50px; }
 #wa-editor .wa-color-line output { font-size: 11px; width: 26px; text-align: right; opacity: .8; }
-#wa-editor .wa-check { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 
-#wa-editor .wa-footer {
-    display: flex;
-    gap: 8px;
-    position: sticky;
-    bottom: -12px;
-    background: var(--SmartThemeBlurTintColor, #121c21);
-    padding: 12px 0 2px;
-}
-#wa-editor .wa-primary { flex: 1; }
-
-#wa-editor .wa-status,
-#wa-editor .wa-help {
-    font-size: 12px;
-    opacity: .85;
-    margin: 10px 0;
-    overflow-wrap: anywhere;
-}
-#wa-editor .wa-warning { font-size: 12px; color: var(--SmartThemeQuoteColor, #cd956c); }
+/* ---------- альбом фонов ---------- */
 
 #wa-editor .wa-album {
     display: grid;
@@ -241,8 +207,27 @@ label.wa-btn { display: inline-flex; align-items: center; justify-content: cente
     font-size: 11px;
 }
 
-#wa-editor .wa-preset { display: flex; justify-content: space-between; gap: 6px; margin: 8px 0; }
-#wa-editor .wa-preset button:first-child { overflow-wrap: anywhere; min-width: 0; }
+/* ---------- низ панели ---------- */
+
+#wa-editor .wa-footer {
+    display: flex;
+    gap: 8px;
+    position: sticky;
+    bottom: -12px;
+    background: var(--SmartThemeBlurTintColor, #121c21);
+    padding: 12px 0 2px;
+}
+#wa-editor .wa-primary { flex: 1; }
+#wa-editor .wa-status,
+#wa-editor .wa-help {
+    font-size: 12px;
+    opacity: .85;
+    margin: 10px 0;
+    overflow-wrap: anywhere;
+}
+#wa-editor .wa-warning { font-size: 12px; color: var(--SmartThemeQuoteColor, #cd956c); }
+
+/* ---------- круглая кнопка ---------- */
 
 #wa-launcher {
     position: fixed;
@@ -263,7 +248,8 @@ label.wa-btn { display: inline-flex; align-items: center; justify-content: cente
     box-shadow: 0 4px 15px #0005;
 }
 
-/* Встроенный режим Roleplay Tools: прокрутку берёт на себя оболочка. */
+/* ---------- встроенный режим Roleplay Tools ---------- */
+
 #rpt-shell #wa-editor[data-rpt-docked=true] {
     position: relative;
     inset: auto;
@@ -279,167 +265,17 @@ label.wa-btn { display: inline-flex; align-items: center; justify-content: cente
     overflow: hidden;
 }
 #rpt-shell #wa-editor[data-rpt-docked=true] .wa-body { overflow: auto; }
-#rpt-shell #wa-editor[data-rpt-docked=true] > .wa-header > .wa-icon { display: none; }
+#rpt-shell #wa-editor[data-rpt-docked=true] > .wa-header > .wa-close { display: none; }
 #wa-editor .wa-host-controls { display: flex; }
 
 @media (min-width: 850px) {
     body.wa-editor-open #sheld {
-        margin-left: var(--wa-editor-space, 390px) !important;
-        width: calc(100vw - var(--wa-editor-space, 390px) - 30px) !important;
+        margin-left: var(--wa-editor-space, 370px) !important;
+        width: calc(100vw - var(--wa-editor-space, 370px) - 30px) !important;
         left: 0 !important;
         transform: none !important;
     }
 }
-
-/* =========================================================================
-   Оформление сообщений.
-   .wa-scope вешается и на #chat, и на контейнер предпросмотра, поэтому
-   каждое правило написано один раз и разъехаться физически не может.
-   ========================================================================= */
-
-.wa-scope > .mes:not([is_system="true"]) {
-    display: grid;
-    grid-template-columns: var(--wa-avatarWidth) minmax(0, 1fr);
-    grid-template-areas: "avatar body";
-    align-items: start;
-    gap: 16px;
-    position: relative;
-    background: var(--wa-assistant);
-    color: var(--wa-text);
-    border: 1px solid var(--wa-border);
-    border-radius: var(--wa-radius);
-    padding: var(--wa-padding);
-    margin: 0 0 12px;
-    box-sizing: border-box;
-}
-
-.wa-scope > .mes[is_user="true"] { background: var(--wa-user); }
-
-/* Служебные дети .mes выводятся из сетки, чтобы не делить ширину с текстом. */
-.wa-scope > .mes > .for_checkbox,
-.wa-scope > .mes > .del_checkbox {
-    position: absolute;
-    top: 6px;
-    left: 6px;
-    z-index: 2;
-    margin: 0;
-}
-.wa-scope > .mes > .swipe_left,
-.wa-scope > .mes > .swipeRightBlock {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 2;
-}
-.wa-scope > .mes > .swipe_left { left: 2px; }
-.wa-scope > .mes > .swipeRightBlock {
-    right: 2px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-}
-
-/* Портрет: размер задаётся самой картинке, счётчики под ней не растягиваются. */
-.wa-scope > .mes > .mesAvatarWrapper {
-    grid-area: avatar;
-    width: 100%;
-    min-width: 0;
-    position: relative;
-    top: auto;
-    align-self: flex-start;
-    text-align: center;
-    font-size: 11px;
-    line-height: 1.3;
-}
-.wa-scope > .mes > .mesAvatarWrapper > .avatar {
-    width: 100%;
-    background: none;
-    height: auto;
-    aspect-ratio: auto;
-    border-radius: var(--wa-avatarRadius);
-    margin: 0;
-    overflow: hidden;
-}
-.wa-scope > .mes > .mesAvatarWrapper > .avatar > img {
-    width: 100%;
-    height: auto;
-    max-height: 420px;
-    border-radius: var(--wa-avatarRadius);
-    display: block;
-}
-/* Обрезка возможна только когда у области есть своя высота. */
-.wa-scope[data-wa-fit=crop] > .mes > .mesAvatarWrapper > .avatar {
-    aspect-ratio: var(--wa-avatarRatio);
-}
-.wa-scope[data-wa-fit=crop] > .mes > .mesAvatarWrapper > .avatar > img {
-    height: 100%;
-    max-height: none;
-    object-fit: cover;
-    object-position: center calc(var(--wa-focus) * 1%);
-}
-.wa-scope > .mes > .mesAvatarWrapper > .mesIDDisplay,
-.wa-scope > .mes > .mesAvatarWrapper > .mes_timer,
-.wa-scope > .mes > .mesAvatarWrapper > .tokenCounterDisplay {
-    display: block;
-    opacity: .6;
-    overflow-wrap: anywhere;
-}
-
-/* Текстовая часть. */
-.wa-scope > .mes > .mes_block {
-    grid-area: body;
-    min-width: 0;
-}
-.wa-scope > .mes > .mes_block > .ch_name {
-    color: var(--wa-accent);
-    margin-bottom: 10px;
-    font-size: 12px;
-}
-.wa-scope > .mes > .mes_block > .mes_text {
-    font-family: var(--wa-font);
-    font-size: var(--wa-fontSize);
-    line-height: var(--wa-line);
-    color: var(--wa-text);
-    overflow-wrap: anywhere;
-}
-.wa-scope > .mes > .mes_block > .mes_text > p { margin: 0 0 var(--wa-gap); }
-.wa-scope > .mes > .mes_block > .mes_text > p:last-child { margin-bottom: 0; }
-
-/* Кавычки и курсив красим только в предпросмотре: в настоящем чате этим
-   занимаются переменные --SmartTheme*, чтобы не перебивать регекс-блоки. */
-#wa-preview .mes_text q { color: var(--wa-quote); }
-#wa-preview .mes_text em { color: var(--wa-italic); }
-#wa-preview .mes_text u { color: var(--wa-underline); }
-
-/* ---------- Макеты ---------- */
-
-/* Портреты с разных сторон: у одной из сторон колонки меняются местами. */
-.wa-scope[data-wa-layout=sides][data-wa-reverse=false] > .mes[is_user="true"],
-.wa-scope[data-wa-layout=sides][data-wa-reverse=true] > .mes[is_user="false"] {
-    grid-template-columns: minmax(0, 1fr) var(--wa-avatarWidth);
-    grid-template-areas: "body avatar";
-}
-
-/* ---------- Предпросмотр ---------- */
-
-#wa-preview {
-    padding: 10px;
-    border-radius: 10px;
-    background-color: var(--wa-panel);
-    background-position: center;
-}
-#wa-preview > .mes { gap: 10px; }
-#wa-preview > .mes:last-child { margin-bottom: 0; }
-#wa-preview[data-wa-layout=side] > .mes,
-#wa-preview[data-wa-layout=sides] > .mes {
-    grid-template-columns: min(var(--wa-avatarWidth), 32%) minmax(0, 1fr);
-}
-#wa-preview[data-wa-layout=sides][data-wa-reverse=false] > .mes[is_user="true"],
-#wa-preview[data-wa-layout=sides][data-wa-reverse=true] > .mes[is_user="false"] {
-    grid-template-columns: minmax(0, 1fr) min(var(--wa-avatarWidth), 32%);
-}
-#wa-preview .mes_text { font-size: min(var(--wa-fontSize), 16px); }
 
 @media (max-width: 600px) {
     #wa-editor {
@@ -448,10 +284,5 @@ label.wa-btn { display: inline-flex; align-items: center; justify-content: cente
         max-width: calc(100vw - 10px);
         height: calc(100dvh - 55px);
         min-width: 0;
-    }
-    body.wa-enabled #chat.wa-scope > .mes:not([is_system="true"]) {
-        grid-template-columns: 70px minmax(0, 1fr);
-        gap: 10px;
-        padding: 12px;
     }
 }
