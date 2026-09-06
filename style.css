@@ -1,24 +1,361 @@
-#wa-editor{position:fixed;left:10px;top:55px;width:360px;max-width:calc(100vw - 20px);height:calc(100dvh - 75px);z-index:2000;display:flex;flex-direction:column;border:1px solid var(--SmartThemeBorderColor,#405057);border-radius:14px;background:var(--SmartThemeBlurTintColor,#121c21);color:var(--SmartThemeBodyColor,#e5e3dd);box-shadow:0 10px 35px #0006;resize:horizontal;overflow:auto;min-width:280px;font:14px/1.45 system-ui,sans-serif;text-align:left}
-#wa-editor[hidden]{display:none!important}#wa-editor *{box-sizing:border-box}#wa-editor button,#wa-editor input,#wa-editor select{font:inherit}#wa-editor .wa-header{display:flex;gap:8px;align-items:center;padding:12px;border-bottom:1px solid var(--SmartThemeBorderColor,#405057);flex:none}#wa-editor .wa-header strong{margin-right:auto}#wa-editor .wa-header button{width:30px}#wa-editor .wa-body{padding:12px;overflow:auto;flex:1;min-height:0}#wa-editor .wa-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin:14px 0}#wa-editor button{cursor:pointer;width:auto;margin:0;padding:7px 9px;min-height:34px}#wa-editor button[aria-pressed=true]{outline:1px solid var(--SmartThemeQuoteColor,#cd956c);background:color-mix(in srgb,var(--SmartThemeQuoteColor,#cd956c) 20%,transparent)}#wa-editor select{width:100%;min-width:0;padding:8px}#wa-editor .wa-field{display:flex;flex-direction:column;gap:6px;margin:10px 0}#wa-editor .wa-field>span{display:flex;justify-content:space-between;gap:8px;font-size:12px}#wa-editor input[type=range]{width:100%}#wa-editor input[type=color]{width:100%;height:32px;padding:2px}#wa-editor input[type=file]{max-width:100%;font-size:12px}#wa-editor .wa-color-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}#wa-editor .wa-check{display:flex;align-items:center;gap:8px;margin-bottom:12px}#wa-editor .wa-footer{display:flex;gap:8px;position:sticky;bottom:-12px;background:var(--SmartThemeBlurTintColor,#121c21);padding:12px 0 2px}#wa-editor .wa-primary{flex:1}#wa-editor .wa-status,#wa-editor .wa-help{font-size:12px;opacity:.85;margin:10px 0;overflow-wrap:anywhere}#wa-editor .wa-album{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:12px}#wa-editor .wa-album button{padding:3px;min-width:0;display:block}#wa-editor .wa-album img{width:100%;aspect-ratio:1.5;object-fit:cover;display:block}#wa-editor .wa-album span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}#wa-editor .wa-preset{display:flex;justify-content:space-between;gap:6px;margin:8px 0}#wa-editor .wa-preset button:first-child{overflow-wrap:anywhere;min-width:0}#wa-launcher{position:fixed;left:14px;bottom:20px;width:44px;height:44px;border-radius:50%;z-index:2001;display:grid;place-items:center;cursor:grab;touch-action:none;background:var(--SmartThemeBlurTintColor,#121c21);color:var(--SmartThemeBodyColor,#eee);border:1px solid var(--SmartThemeBorderColor,#456);font-size:22px;box-shadow:0 4px 15px #0005}
-#rpt-shell #wa-editor[data-rpt-docked=true]{position:relative;inset:auto;width:100%;max-width:100%;min-width:0;height:auto;max-height:none;border:0;border-radius:0;box-shadow:none;resize:none;overflow:visible}#rpt-shell #wa-editor[data-rpt-docked=true] .wa-body{overflow:visible}#rpt-shell #wa-editor[data-rpt-docked=true]>.wa-header>button{display:none}#wa-editor .wa-host-controls{display:flex}
-@media(min-width:850px){body.wa-editor-open #sheld{margin-left:var(--wa-editor-space,390px)!important;width:calc(100vw - var(--wa-editor-space,390px) - 30px)!important;left:0!important;transform:none!important}}
-/* The real chat and preview share geometry; message contents and DOM are untouched. */
-body.wa-enabled #chat>.mes:not([is_system=true]),#wa-editor .wa-message{display:flex!important;align-items:flex-start;flex-direction:row;gap:16px;background:var(--wa-assistant);color:var(--wa-text);border:1px solid var(--wa-border);border-radius:var(--wa-radius);padding:var(--wa-padding);margin:0 0 12px;min-height:0;box-sizing:border-box;position:relative}
-body.wa-enabled #chat>.mes[is_user=true],#wa-editor .wa-message[data-user=true]{background:var(--wa-user)}
-body.wa-enabled #chat>.mes>.mesAvatarWrapper,#wa-editor .wa-avatar{width:var(--wa-avatarWidth);min-width:0;flex:0 0 var(--wa-avatarWidth);position:relative;top:auto;align-self:flex-start;text-align:center;font-size:12px}
-body.wa-enabled #chat>.mes>.mesAvatarWrapper>.avatar{width:100%;height:auto;aspect-ratio:auto;border-radius:var(--wa-avatarRadius);margin:0;overflow:hidden}
-body.wa-enabled #chat>.mes>.mesAvatarWrapper>.avatar>img,#wa-editor .wa-avatar img{width:100%;height:auto;max-height:350px;object-fit:var(--wa-avatarFit);object-position:center calc(var(--wa-focus)*1%);border-radius:var(--wa-avatarRadius);display:block}
-body.wa-enabled[data-wa-layout=compact] #chat>.mes>.mesAvatarWrapper,#wa-editor .wa-preview[data-layout=compact] .wa-avatar{width:44px;flex-basis:44px}
-body.wa-enabled #chat>.mes>.mes_block,#wa-editor .wa-message-body{min-width:0;flex:1}
-body.wa-enabled #chat>.mes>.mes_block>.mes_text,#wa-editor .wa-prose{font-family:var(--wa-font);font-size:var(--wa-fontSize);line-height:var(--wa-line);color:var(--wa-text);overflow-wrap:anywhere}
-body.wa-enabled #chat>.mes>.mes_block>.mes_text>p,#wa-editor .wa-prose>p{margin:0 0 var(--wa-gap)}
-body.wa-enabled #chat>.mes>.mes_block>.mes_text>p:last-child,#wa-editor .wa-prose>p:last-child{margin-bottom:0}
-#wa-editor .wa-prose q{color:var(--wa-quote)}#wa-editor .wa-prose em{color:var(--wa-italic)}#wa-editor .wa-name{color:var(--wa-accent);margin-bottom:12px;font-size:12px}
-body.wa-enabled[data-wa-layout=opposite][data-wa-reverse=false] #chat>.mes[is_user=false],body.wa-enabled[data-wa-layout=opposite][data-wa-reverse=true] #chat>.mes[is_user=true],#wa-editor .wa-preview[data-layout=opposite][data-reverse=false] .wa-message[data-user=false],#wa-editor .wa-preview[data-layout=opposite][data-reverse=true] .wa-message[data-user=true]{flex-direction:row-reverse}
-body.wa-enabled[data-wa-layout=cover] #chat>.mes:not([is_system=true]),#wa-editor .wa-preview[data-layout=cover] .wa-message{flex-direction:column}
-body.wa-enabled[data-wa-layout=cover] #chat>.mes>.mesAvatarWrapper,#wa-editor .wa-preview[data-layout=cover] .wa-avatar{width:100%;flex-basis:auto}
-body.wa-enabled[data-wa-layout=cover] #chat>.mes>.mesAvatarWrapper>.avatar>img,#wa-editor .wa-preview[data-layout=cover] .wa-avatar img{max-height:180px;object-fit:var(--wa-avatarFit)}
-#wa-editor .wa-preview{padding:8px;border-radius:10px;background-color:var(--wa-panel);background-position:center}#wa-editor .wa-preview .wa-message{padding:12px;gap:10px}#wa-editor .wa-preview .wa-avatar{flex-basis:min(var(--wa-avatarWidth),30%);width:min(var(--wa-avatarWidth),30%)}#wa-editor .wa-preview .wa-prose{font-size:min(var(--wa-fontSize),18px)}
-@media(max-width:600px){#wa-editor{left:5px;top:45px;max-width:calc(100vw - 10px);height:calc(100dvh - 55px);min-width:0}body.wa-enabled #chat>.mes>.mesAvatarWrapper{flex-basis:70px;width:70px}body.wa-enabled #chat>.mes:not([is_system=true]){gap:10px;padding:12px}}
+/* =========================================================================
+   Wani Atelier — оформление
+   Разметка сообщения в SillyTavern 1.18 (шесть прямых детей .mes):
+     .for_checkbox | input.del_checkbox | .mesAvatarWrapper |
+     .swipe_left   | .mes_block         | .swipeRightBlock
+   В раскладке участвуют только .mesAvatarWrapper и .mes_block,
+   остальные выводятся из потока, иначе они делят ширину с текстом.
+   ========================================================================= */
 
-#wa-editor button,#wa-editor select{background:var(--SmartThemeBlurTintColor,#17252b);color:var(--SmartThemeBodyColor,#eee);border:1px solid var(--SmartThemeBorderColor,#456);border-radius:7px}#wa-editor button:hover{filter:brightness(1.15)}
+/* ---------- Панель редактора ---------- */
+
+#wa-editor {
+    position: fixed;
+    left: 10px;
+    top: 55px;
+    width: 360px;
+    max-width: calc(100vw - 20px);
+    height: calc(100dvh - 75px);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--SmartThemeBorderColor, #405057);
+    border-radius: 12px;
+    background: var(--SmartThemeBlurTintColor, #121c21);
+    color: var(--SmartThemeBodyColor, #e5e3dd);
+    box-shadow: 0 10px 35px #0006;
+    resize: horizontal;
+    overflow: hidden;
+    min-width: 280px;
+    font: 14px/1.45 system-ui, sans-serif;
+    text-align: left;
+}
+
+#wa-editor[hidden] { display: none !important; }
+#wa-editor * { box-sizing: border-box; }
+#wa-editor button, #wa-editor input, #wa-editor select { font: inherit; }
+
+#wa-editor .wa-header {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 12px;
+    border-bottom: 1px solid var(--SmartThemeBorderColor, #405057);
+    flex: none;
+}
+#wa-editor .wa-header strong {
+    margin-right: auto;
+    font-size: 11px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    opacity: .9;
+}
+#wa-editor .wa-header button { width: 30px; }
+
+#wa-editor .wa-body {
+    padding: 12px;
+    overflow: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+#wa-editor .wa-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+    margin: 14px 0;
+}
+
+#wa-editor button {
+    cursor: pointer;
+    width: auto;
+    margin: 0;
+    padding: 7px 9px;
+    min-height: 34px;
+}
+#wa-editor button[aria-pressed=true] {
+    outline: 1px solid var(--SmartThemeQuoteColor, #cd956c);
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor, #cd956c) 20%, transparent);
+}
+#wa-editor button, #wa-editor select {
+    background: var(--SmartThemeBlurTintColor, #17252b);
+    color: var(--SmartThemeBodyColor, #eee);
+    border: 1px solid var(--SmartThemeBorderColor, #456);
+    border-radius: 7px;
+}
+#wa-editor button:hover { filter: brightness(1.15); }
+#wa-editor select { width: 100%; min-width: 0; padding: 8px; }
+
+#wa-editor .wa-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 10px 0;
+}
+#wa-editor .wa-field > span {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    opacity: .85;
+}
+#wa-editor input[type=range] { width: 100%; }
+#wa-editor input[type=color] { width: 100%; height: 32px; padding: 2px; }
+#wa-editor input[type=file] { max-width: 100%; font-size: 12px; }
+#wa-editor .wa-color-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+#wa-editor .wa-check { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+
+#wa-editor .wa-footer {
+    display: flex;
+    gap: 8px;
+    position: sticky;
+    bottom: -12px;
+    background: var(--SmartThemeBlurTintColor, #121c21);
+    padding: 12px 0 2px;
+}
+#wa-editor .wa-primary { flex: 1; }
+
+#wa-editor .wa-status,
+#wa-editor .wa-help {
+    font-size: 12px;
+    opacity: .85;
+    margin: 10px 0;
+    overflow-wrap: anywhere;
+}
+#wa-editor .wa-warning { font-size: 12px; color: var(--SmartThemeQuoteColor, #cd956c); }
+
+#wa-editor .wa-album {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 12px;
+}
+#wa-editor .wa-album button { padding: 3px; min-width: 0; display: block; }
+#wa-editor .wa-album img { width: 100%; aspect-ratio: 1.5; object-fit: cover; display: block; }
+#wa-editor .wa-album span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11px;
+}
+
+#wa-editor .wa-preset { display: flex; justify-content: space-between; gap: 6px; margin: 8px 0; }
+#wa-editor .wa-preset button:first-child { overflow-wrap: anywhere; min-width: 0; }
+
+#wa-launcher {
+    position: fixed;
+    left: 14px;
+    bottom: 20px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    z-index: 2001;
+    display: grid;
+    place-items: center;
+    cursor: grab;
+    touch-action: none;
+    background: var(--SmartThemeBlurTintColor, #121c21);
+    color: var(--SmartThemeBodyColor, #eee);
+    border: 1px solid var(--SmartThemeBorderColor, #456);
+    font-size: 22px;
+    box-shadow: 0 4px 15px #0005;
+}
+
+/* Встроенный режим Roleplay Tools: прокрутку берёт на себя оболочка. */
+#rpt-shell #wa-editor[data-rpt-docked=true] {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: 100%;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    resize: none;
+    overflow: hidden;
+}
+#rpt-shell #wa-editor[data-rpt-docked=true] .wa-body { overflow: auto; }
+#rpt-shell #wa-editor[data-rpt-docked=true] > .wa-header > button { display: none; }
+#wa-editor .wa-host-controls { display: flex; }
+
+@media (min-width: 850px) {
+    body.wa-editor-open #sheld {
+        margin-left: var(--wa-editor-space, 390px) !important;
+        width: calc(100vw - var(--wa-editor-space, 390px) - 30px) !important;
+        left: 0 !important;
+        transform: none !important;
+    }
+}
+
+/* =========================================================================
+   Оформление сообщений.
+   .wa-scope вешается и на #chat, и на контейнер предпросмотра, поэтому
+   каждое правило написано один раз и разъехаться физически не может.
+   ========================================================================= */
+
+.wa-scope > .mes:not([is_system="true"]) {
+    display: grid;
+    grid-template-columns: var(--wa-avatarWidth) minmax(0, 1fr);
+    grid-template-areas: "avatar body";
+    align-items: start;
+    gap: 16px;
+    position: relative;
+    background: var(--wa-assistant);
+    color: var(--wa-text);
+    border: 1px solid var(--wa-border);
+    border-radius: var(--wa-radius);
+    padding: var(--wa-padding);
+    margin: 0 0 12px;
+    box-sizing: border-box;
+}
+
+.wa-scope > .mes[is_user="true"] { background: var(--wa-user); }
+
+/* Служебные дети .mes выводятся из сетки, чтобы не делить ширину с текстом. */
+.wa-scope > .mes > .for_checkbox,
+.wa-scope > .mes > .del_checkbox {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    z-index: 2;
+    margin: 0;
+}
+.wa-scope > .mes > .swipe_left,
+.wa-scope > .mes > .swipeRightBlock {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+}
+.wa-scope > .mes > .swipe_left { left: 2px; }
+.wa-scope > .mes > .swipeRightBlock {
+    right: 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+/* Портрет: размер задаётся самой картинке, счётчики под ней не растягиваются. */
+.wa-scope > .mes > .mesAvatarWrapper {
+    grid-area: avatar;
+    width: 100%;
+    min-width: 0;
+    position: relative;
+    top: auto;
+    align-self: flex-start;
+    text-align: center;
+    font-size: 11px;
+    line-height: 1.3;
+}
+.wa-scope > .mes > .mesAvatarWrapper > .avatar {
+    width: 100%;
+    height: auto;
+    aspect-ratio: auto;
+    border-radius: var(--wa-avatarRadius);
+    margin: 0;
+    overflow: hidden;
+}
+.wa-scope > .mes > .mesAvatarWrapper > .avatar > img {
+    width: 100%;
+    height: auto;
+    max-height: 420px;
+    object-fit: var(--wa-avatarFit);
+    object-position: center calc(var(--wa-focus) * 1%);
+    border-radius: var(--wa-avatarRadius);
+    display: block;
+}
+.wa-scope > .mes > .mesAvatarWrapper > .mesIDDisplay,
+.wa-scope > .mes > .mesAvatarWrapper > .mes_timer,
+.wa-scope > .mes > .mesAvatarWrapper > .tokenCounterDisplay {
+    display: block;
+    opacity: .6;
+    overflow-wrap: anywhere;
+}
+
+/* Текстовая часть. */
+.wa-scope > .mes > .mes_block {
+    grid-area: body;
+    min-width: 0;
+}
+.wa-scope > .mes > .mes_block > .ch_name {
+    color: var(--wa-accent);
+    margin-bottom: 10px;
+    font-size: 12px;
+}
+.wa-scope > .mes > .mes_block > .mes_text {
+    font-family: var(--wa-font);
+    font-size: var(--wa-fontSize);
+    line-height: var(--wa-line);
+    color: var(--wa-text);
+    overflow-wrap: anywhere;
+}
+.wa-scope > .mes > .mes_block > .mes_text > p { margin: 0 0 var(--wa-gap); }
+.wa-scope > .mes > .mes_block > .mes_text > p:last-child { margin-bottom: 0; }
+
+/* Кавычки и курсив красим только в предпросмотре: в настоящем чате этим
+   занимаются переменные --SmartTheme*, чтобы не перебивать регекс-блоки. */
+#wa-preview .mes_text q { color: var(--wa-quote); }
+#wa-preview .mes_text em { color: var(--wa-italic); }
+#wa-preview .mes_text u { color: var(--wa-underline); }
+
+/* ---------- Макеты ---------- */
+
+/* Портреты с разных сторон: у одной из сторон колонки меняются местами. */
+.wa-scope[data-wa-layout=opposite][data-wa-reverse=false] > .mes[is_user="true"],
+.wa-scope[data-wa-layout=opposite][data-wa-reverse=true] > .mes[is_user="false"] {
+    grid-template-columns: minmax(0, 1fr) var(--wa-avatarWidth);
+    grid-template-areas: "body avatar";
+}
+
+/* Компактные аватарки. */
+.wa-scope[data-wa-layout=compact] > .mes:not([is_system="true"]) {
+    grid-template-columns: 44px minmax(0, 1fr);
+}
+
+/* Портрет над текстом. */
+.wa-scope[data-wa-layout=cover] > .mes:not([is_system="true"]) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "avatar" "body";
+}
+.wa-scope[data-wa-layout=cover] > .mes > .mesAvatarWrapper > .avatar > img { max-height: 200px; }
+
+/* ---------- Предпросмотр ---------- */
+
+#wa-preview {
+    padding: 10px;
+    border-radius: 10px;
+    background-color: var(--wa-panel);
+    background-position: center;
+}
+#wa-preview > .mes { padding: 12px; gap: 10px; }
+#wa-preview > .mes:last-child { margin-bottom: 0; }
+#wa-preview[data-wa-layout=ripple] > .mes,
+#wa-preview[data-wa-layout=opposite] > .mes {
+    grid-template-columns: min(var(--wa-avatarWidth), 32%) minmax(0, 1fr);
+}
+#wa-preview[data-wa-layout=opposite][data-wa-reverse=false] > .mes[is_user="true"],
+#wa-preview[data-wa-layout=opposite][data-wa-reverse=true] > .mes[is_user="false"] {
+    grid-template-columns: minmax(0, 1fr) min(var(--wa-avatarWidth), 32%);
+}
+#wa-preview .mes_text { font-size: min(var(--wa-fontSize), 16px); }
+
+@media (max-width: 600px) {
+    #wa-editor {
+        left: 5px;
+        top: 45px;
+        max-width: calc(100vw - 10px);
+        height: calc(100dvh - 55px);
+        min-width: 0;
+    }
+    body.wa-enabled #chat.wa-scope > .mes:not([is_system="true"]) {
+        grid-template-columns: 70px minmax(0, 1fr);
+        gap: 10px;
+        padding: 12px;
+    }
+}
