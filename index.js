@@ -92,7 +92,8 @@ function start() {
     };
 
     const content = el('div', 'wa-content');
-    const preview = el('section', 'wa-preview');
+    const preview = el('section', 'wa-scope');
+    preview.id = 'wa-preview';
 
     const status = el('div', 'wa-status');
     status.setAttribute('aria-live', 'polite');
@@ -109,6 +110,7 @@ function start() {
     foot.append(save, btn('Отменить', () => {
         drafts.delete(editing);
         render();
+        apply();
     }));
 
     body.append(enableLabel, target, nav, content, el('h4', '', 'Предпросмотр'), preview, status, foot);
@@ -152,7 +154,8 @@ function start() {
     function set(key, value) {
         draft()[key] = value;
         renderPreview();
-        status.textContent = 'Черновик · изменения видны в примере';
+        apply();
+        status.textContent = 'Черновик · изменения видны сразу';
     }
 
     function field(label, input) {
@@ -512,11 +515,58 @@ function start() {
         return fallback && album.includes(fallback) ? fallback : '';
     }
 
+    // Предпросмотр использует классы Таверны, поэтому к нему применяются
+    // те же правила .wa-scope, что и к настоящему чату.
+    function previewMessage(theme, isUser, char) {
+        const message = el('article', 'mes');
+        message.setAttribute('is_user', String(isUser));
+
+        const wrapper = el('div', 'mesAvatarWrapper');
+        const avatar = el('div', 'avatar');
+        const src = isUser
+            ? document.querySelector('#chat .mes[is_user="true"] .avatar img')?.getAttribute('src')
+            : char?.avatar ? '/thumbnail?type=avatar&file=' + encodeURIComponent(char.avatar) : '';
+        const name = isUser ? ctx().name1 || 'Пользователь' : char?.name || 'Персонаж';
+
+        if (src) {
+            const pic = el('img');
+            pic.src = src;
+            pic.alt = name;
+            avatar.append(pic);
+        } else {
+            avatar.textContent = isUser ? 'Я' : '✦';
+        }
+        wrapper.append(avatar);
+
+        const block = el('div', 'mes_block');
+        const heading = el('div', 'ch_name');
+        heading.append(el('span', 'name_text', name));
+        block.append(heading);
+
+        const text = el('div', 'mes_text');
+        if (isUser) {
+            const p = el('p');
+            p.append(el('q', '', 'Если выйдем утром, успеем добраться до бухты?'));
+            text.append(p);
+        } else {
+            const p1 = el('p', '', 'Он развернул карту и придвинул её к краю стола. За открытым окном слышались голоса с причала; ветер шевелил бумагу.');
+            const p2 = el('p');
+            p2.append(el('q', '', 'Успеем. Только возьми куртку — у воды холодно.'), ' Он отметил тропинку карандашом и поднял взгляд.');
+            const p3 = el('p');
+            p3.append(el('em', '', 'Всё необходимое уже было собрано.'), ' Осталось дождаться утра.');
+            text.append(p1, p2, p3);
+        }
+        block.append(text);
+
+        message.append(wrapper, block);
+        return message;
+    }
+
     function renderPreview() {
         const theme = normalize(draft());
         preview.style.cssText = variables(theme);
-        preview.dataset.layout = theme.layout;
-        preview.dataset.reverse = String(theme.reverse);
+        preview.dataset.waLayout = theme.layout;
+        preview.dataset.waReverse = String(theme.reverse);
 
         const bg = resolvedBackground(theme);
         const dim = '#000000' + Math.round(theme.dim * 2.55).toString(16).padStart(2, '0');
@@ -524,65 +574,42 @@ function start() {
             ? `linear-gradient(${dim},${dim}),url("${backgroundUrl(bg)}")`
             : '';
         preview.style.backgroundSize = theme.fit;
-        preview.replaceChildren();
 
         const char = ctx().characters.find(x => 'char:' + x.avatar === editing)
             || ctx().characters[ctx().characterId];
 
-        for (const user of [true, false]) {
-            const message = el('article', 'wa-message');
-            message.dataset.user = String(user);
-
-            const avatarBox = el('div', 'wa-avatar');
-            const pic = el('img');
-            const src = user
-                ? document.querySelector('#chat .mes[is_user="true"] .avatar img')?.getAttribute('src')
-                : char?.avatar ? '/thumbnail?type=avatar&file=' + encodeURIComponent(char.avatar) : '';
-
-            if (src) {
-                pic.src = src;
-                pic.alt = user ? ctx().name1 || 'Пользователь' : char?.name || 'Персонаж';
-                avatarBox.append(pic);
-            } else {
-                avatarBox.textContent = user ? 'Я' : '✦';
-            }
-
-            const block = el('div', 'wa-message-body');
-            block.append(el('div', 'wa-name', user ? ctx().name1 || 'Пользователь' : char?.name || 'Персонаж'));
-
-            const text = el('div', 'wa-prose');
-            if (user) {
-                const p = el('p');
-                p.append(el('q', '', 'Если выйдем утром, успеем добраться до бухты?'));
-                text.append(p);
-            } else {
-                const p1 = el('p', '', 'Он развернул карту и придвинул её к краю стола. За открытым окном слышались голоса с причала; ветер шевелил бумагу.');
-                const p2 = el('p');
-                p2.append(el('q', '', 'Успеем. Только возьми куртку — у воды холодно.'), ' Он отметил тропинку карандашом и поднял взгляд.');
-                const p3 = el('p');
-                p3.append(el('em', '', 'Всё необходимое уже было собрано.'), ' Осталось дождаться утра.');
-                text.append(p1, p2, p3);
-            }
-
-            block.append(text);
-            message.append(avatarBox, block);
-            preview.append(message);
-        }
+        preview.replaceChildren(
+            previewMessage(theme, true, char),
+            previewMessage(theme, false, char),
+        );
     }
 
     // ---- применение к настоящей странице ---------------------------------
 
+    // Пока редактируется тема текущей карточки, на странице показывается
+    // черновик: предпросмотр и настоящий чат не могут разойтись.
+    function activeTheme() {
+        return editing === current && drafts.has(current)
+            ? normalize(drafts.get(current))
+            : themeFor(state, current);
+    }
+
     function apply() {
+        const chat = document.getElementById('chat');
         document.body.classList.toggle('wa-enabled', state.enabled);
+        chat?.classList.toggle('wa-scope', state.enabled);
+
         if (!state.enabled) {
             live.textContent = '';
             return;
         }
 
-        const theme = themeFor(state, current);
+        const theme = activeTheme();
         const bg = resolvedBackground(theme);
-        document.body.dataset.waLayout = theme.layout;
-        document.body.dataset.waReverse = String(theme.reverse);
+        if (chat) {
+            chat.dataset.waLayout = theme.layout;
+            chat.dataset.waReverse = String(theme.reverse);
+        }
 
         const smartTheme = [
             `--SmartThemeBodyColor:${theme.text};`,
@@ -593,6 +620,7 @@ function start() {
             `--SmartThemeBorderColor:${theme.border};`,
             `--SmartThemeUserMesBlurTintColor:${theme.user};`,
             `--SmartThemeBotMesBlurTintColor:${theme.assistant};`,
+            `--SmartThemeChatTintColor:transparent;`,
         ].join('');
 
         const backgroundRule = bg
