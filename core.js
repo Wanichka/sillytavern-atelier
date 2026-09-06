@@ -64,10 +64,8 @@ export const FONTS = [
 ];
 
 export const LAYOUTS = [
-    ['side', 'Портрет сбоку'],
+    ['side', 'Портреты с одной стороны'],
     ['sides', 'Портреты с разных сторон'],
-    ['compact', 'Компактная аватарка'],
-    ['cover', 'Портрет над текстом'],
 ];
 
 // Название шрифта попадает прямо в CSS, поэтому пропускаем только буквы,
@@ -104,7 +102,7 @@ const ranges = {
 };
 
 // Значения из старого формата, чтобы ничего не потерялось при переносе.
-const LEGACY_LAYOUTS = { ripple: 'side', opposite: 'sides' };
+const LEGACY_LAYOUTS = { ripple: 'side', opposite: 'sides', compact: 'side', cover: 'side' };
 const LEGACY_AVATAR_FIT = { contain: 'full', cover: 'crop' };
 
 export function normalizeSettings(data = {}) {
@@ -152,7 +150,8 @@ export function newThemeId() {
 }
 
 export function emptyStore() {
-    return { version: VERSION, enabled: false, defaultThemeId: null, themes: {}, assignments: {} };
+    // skin — базовый вид Таверны, общий для всех тем.
+    return { version: VERSION, enabled: false, skin: true, defaultThemeId: null, themes: {}, assignments: {} };
 }
 
 // Персонаж определяется файлом аватарки: имена карточек повторяются.
@@ -200,6 +199,7 @@ export function readStore(value) {
     if (!value || typeof value !== 'object') return store;
 
     store.enabled = value.enabled === true;
+    store.skin = value.skin !== false;
 
     if (value.version === 1) {
         migrateV1(value, store);
