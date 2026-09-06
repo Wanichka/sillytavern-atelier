@@ -111,8 +111,7 @@ function start() {
         apply();
     };
 
-    const themeRow = el('div', 'wa-theme-row');
-    const bindRow = el('div', 'wa-theme-row');
+    const icons = el('div', 'wa-icons');
     const nav = el('nav', 'wa-tabs');
     nav.setAttribute('aria-label', 'Разделы оформления');
     const content = el('div', 'wa-content');
@@ -138,7 +137,7 @@ function start() {
         apply();
     }));
 
-    body.append(enableLabel, themeRow, bindRow, nav, content, status, foot);
+    body.append(enableLabel, picker, icons, nav, content, status, foot);
     panel.append(header, body);
 
     const launcher = btn('✦', () => toggle(), 'wa-launcher-btn');
@@ -290,13 +289,14 @@ function start() {
         renderContent();
     }
 
+    // Все кнопки одним рядом: управление темой, привязка, обмен.
     function renderThemeRow() {
-        themeRow.replaceChildren(picker, iconBtn('fa-plus', 'Новая тема', createTheme));
-        bindRow.replaceChildren();
+        icons.replaceChildren(iconBtn('fa-plus', 'Новая тема', createTheme));
         if (!editingId) return;
 
         const theme = store.themes[editingId];
-        themeRow.append(
+
+        icons.append(
             iconBtn('fa-pencil', 'Переименовать', () => {
                 const name = prompt('Название темы', theme.name);
                 if (name === null) return;
@@ -328,6 +328,7 @@ function start() {
                 render();
                 apply();
             }, 'wa-danger'),
+            el('span', 'wa-sep'),
         );
 
         const assigned = currentKey && store.assignments[currentKey] === editingId;
@@ -353,7 +354,7 @@ function start() {
         });
         star.setAttribute('aria-pressed', String(store.defaultThemeId === editingId));
 
-        bindRow.append(pin, star, exportBtn(), importControl());
+        icons.append(pin, star, el('span', 'wa-sep'), exportBtn(), importControl());
     }
 
     function createTheme() {
