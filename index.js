@@ -1,3 +1,5 @@
+import { FONT_KEYS, FontLibrary, createFontStorage } from './fonts.js';
+import { createFontPicker } from './font-picker.js';
 import {
     KEY, VERSION, BACKGROUND,
     normalizeTheme, normalizeName, newThemeId, readStore, importTheme,
@@ -52,6 +54,8 @@ function start() {
     let busy = false;
 
     const drafts = new Map();
+    const fontLibrary = new FontLibrary(createFontStorage());
+    let fontRows = new AbortController();
     const hostListeners = new AbortController();
     // Панель закрыта — перерисовывать её при смене чата незачем.
     let pendingRender = false;
@@ -431,6 +435,8 @@ function start() {
     }
 
     function renderContent() {
+        fontRows.abort();
+        fontRows = new AbortController();
         nav.querySelectorAll('button').forEach(b => {
             b.setAttribute('aria-pressed', String(b.dataset.tab === tab));
         });
@@ -466,10 +472,31 @@ function start() {
     }
 
     function renderTheme() {
-        const { smart, other } = groupVars(draft());
+        const { smart, other: allOther } = groupVars(draft());
+        const other = allOther.filter(name => !FONT_KEYS.includes(name));
+        content.append(el('h5', 'wa-subtitle', 'Шрифты'));
+        for (const name of FONT_KEYS) {
+            content.append(createFontPicker({
+                name, label: labelFor(name), value: draft().vars[name], library: fontLibrary,
+                signal: fontRows.signal,
+                onChange(value) {
+                    if (value) draft().vars[name] = value;
+                    else delete draft().vars[name];
+                    touched();
+                },
+                isUsed(id) {
+                    return [...Object.values(store.themes), ...drafts.values()].some(theme =>
+                        FONT_KEYS.some(key => !(theme === draft() && key === name)
+                            && theme.vars?.[key]?.includes(id)));
+                },
+            }));
+        }
+        content.append(el('p', 'wa-help', 'Стандартные варианты используют доступные браузеру шрифты. '
+            + 'Загруженные файлы хранятся в этом браузере для этого адреса Таверны; '
+            + 'в экспорт темы они не входят. Сохраняй исходные файлы отдельно.'));
 
         if (!smart.length && !other.length) {
-            content.append(el('p', 'wa-help', 'В этой теме нет значений. Загрузи файл темы кнопкой импорта.'));
+            content.append(el('p', 'wa-help', 'Других настроек оформления пока нет. Можно загрузить файл темы кнопкой импорта.'));
             return;
         }
 
@@ -700,6 +727,8 @@ function start() {
         if (panel.hidden) pendingRender = true;
         else render();
     });
+
+    void fontLibrary.restore();
 
     // ---- перетаскивание кнопки -------------------------------------------
 

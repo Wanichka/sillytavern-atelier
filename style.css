@@ -358,3 +358,27 @@ label.wa-btn { display: inline-flex; align-items: center; justify-content: cente
         min-width: 0;
     }
 }
+
+/* Font controls stay in the editor's existing scroll container. */
+#wa-editor .wa-font-picker { min-width: 0; margin-bottom: 18px; }
+#wa-editor .wa-font-picker > input,
+#wa-editor .wa-font-picker > select { width: 100%; min-width: 0; margin: 4px 0; }
+#wa-editor .wa-font-picker input[type=search] {
+    padding: 7px 9px;
+    font: inherit;
+    color: var(--SmartThemeBodyColor, #eee);
+    background: var(--SmartThemeBlurTintColor, #17252b);
+    border: 1px solid var(--SmartThemeBorderColor, #456);
+    border-radius: 7px;
+}
+#wa-editor .wa-font-preview {
+    font-size: 18px;
+    line-height: 1.5;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+    padding: 12px;
+    margin: 8px 0;
+    border: 1px solid var(--SmartThemeBorderColor, #456);
+    border-radius: 7px;
+}
+#wa-editor .wa-font-picker [hidden] { display: none !important; }
