@@ -115,25 +115,7 @@ function start() {
     const status = el('div', 'wa-status');
     status.setAttribute('aria-live', 'polite');
 
-    const foot = el('footer', 'wa-footer');
-    foot.append(
-        btn('Сохранить тему', () => {
-            if (!editingId) return;
-            store.themes[editingId] = normalizeTheme(draft());
-            drafts.delete(editingId);
-            persist();
-            render();
-            apply();
-            status.textContent = 'Тема сохранена';
-        }, 'wa-primary'),
-        btn('Отменить', () => {
-            if (editingId) drafts.delete(editingId);
-            render();
-            apply();
-        }),
-    );
-
-    body.append(enableLabel, picker, icons, nav, content, status, foot);
+    body.append(enableLabel, picker, icons, nav, content, status);
     panel.append(header, body);
 
     const launcher = btn('✦', () => toggle(), 'wa-launcher-btn');
@@ -148,9 +130,22 @@ function start() {
 
     // ---- мелкие помощники ------------------------------------------------
 
+    let saveButton = null;
+
     function touched(message = 'Есть несохранённые изменения') {
         apply();
+        saveButton?.classList.toggle('wa-dirty', dirty());
         status.textContent = message;
+    }
+
+    function saveTheme() {
+        if (!editingId) return;
+        store.themes[editingId] = normalizeTheme(draft());
+        drafts.delete(editingId);
+        persist();
+        render();
+        apply();
+        status.textContent = 'Тема сохранена';
     }
 
     function field(label, control, extra) {
@@ -286,7 +281,24 @@ function start() {
     }
 
     function renderIcons() {
-        icons.replaceChildren(importControl());
+        icons.replaceChildren();
+        saveButton = null;
+
+        if (editingId) {
+            saveButton = iconBtn('fa-floppy-disk', 'Сохранить тему', saveTheme, 'wa-save');
+            saveButton.classList.toggle('wa-dirty', dirty());
+            icons.append(
+                saveButton,
+                iconBtn('fa-rotate-left', 'Отменить несохранённые правки', () => {
+                    drafts.delete(editingId);
+                    render();
+                    apply();
+                }),
+                el('span', 'wa-sep'),
+            );
+        }
+
+        icons.append(importControl());
         if (!editingId) return;
 
         const theme = store.themes[editingId];
@@ -353,7 +365,7 @@ function start() {
     }
 
     function exportBtn() {
-        return iconBtn('fa-file-export', 'Сохранить тему в файл', () => {
+        return iconBtn('fa-file-export', 'Выгрузить тему в файл', () => {
             const theme = normalizeTheme(drafts.get(editingId) || store.themes[editingId]);
             const blob = new Blob([JSON.stringify({ format: 'wani-atelier', version: VERSION, theme }, null, 2)],
                 { type: 'application/json' });
@@ -436,6 +448,21 @@ function start() {
         status.textContent = dirty() ? 'Есть несохранённые изменения' : 'Все изменения сохранены';
     }
 
+    // Половину темы можно выбросить целиком: например, оставить цвета
+    // Таверны, а настройки темы оформления отдать ей самой.
+    function groupHeading(title, names) {
+        const heading = el('div', 'wa-group');
+        heading.append(el('h5', 'wa-subtitle', title));
+        heading.append(iconBtn('fa-trash-can', `Убрать все значения: ${title.toLowerCase()}`, () => {
+            if (!confirm(`Убрать из темы все значения (${names.length}) — ${title.toLowerCase()}?`)) return;
+            for (const name of names) delete draft().vars[name];
+            apply();
+            renderContent();
+            status.textContent = `Убрано значений: ${names.length}. Проверь и сохрани тему.`;
+        }, 'wa-danger'));
+        return heading;
+    }
+
     function renderTheme() {
         const { smart, other } = groupVars(draft());
 
@@ -445,27 +472,13 @@ function start() {
         }
 
         if (smart.length) {
-            content.append(el('h5', 'wa-subtitle', 'Из темы Таверны'));
+            content.append(groupHeading('Из темы Таверны', smart));
             for (const name of smart) content.append(varRow(name));
         }
         if (other.length) {
-            content.append(el('h5', 'wa-subtitle', 'Из темы оформления'));
+            content.append(groupHeading('Из темы оформления', other));
             for (const name of other) content.append(varRow(name));
         }
-
-        content.append(btn('Убрать лишние значения…', () => {
-            const name = prompt('Какое значение убрать? Впиши имя переменной целиком',
-                [...smart, ...other][0] || '');
-            if (name === null) return;
-            if (!(name in draft().vars)) {
-                status.textContent = 'Такого значения в теме нет';
-                return;
-            }
-            delete draft().vars[name];
-            apply();
-            renderContent();
-            status.textContent = 'Значение убрано. Проверь и сохрани тему.';
-        }));
     }
 
     // ---- фон -------------------------------------------------------------
