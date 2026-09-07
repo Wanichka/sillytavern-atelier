@@ -28,30 +28,31 @@ export const ST_COLORS = {
     bot_mes_blur_tint_color: ['--SmartThemeBotMesBlurTintColor', 'Сообщения персонажа'],
 };
 
-// Понятные подписи для переменных, которые читает CSS самого Moonlit.
-// Остальные показываются под своими именами как есть.
+// Белый список: в тему попадают только эти переменные. Всё остальное из
+// пресета — внутренняя кухня темы оформления (мобильные отступы, размеры
+// портретов для её собственных макетов, анимации), под персонажа это не
+// переключают, а место в редакторе занимает.
 export const LABELS = {
     '--mainFontFamily': 'Шрифт',
     '--monoFontFamily': 'Моношрифт',
     '--customThemeColor': 'Акцент',
     '--customThemeColor2': 'Второй акцент',
-    '--customBgColor1': 'Фон меню',
-    '--customBgColor2': 'Фон меню, второй',
     '--customTopBarColor': 'Верхняя панель',
     '--Drawer-iconColor': 'Иконки меню',
+    '--customBgColor1': 'Фон меню',
+    '--customBgColor2': 'Фон меню, второй',
     '--sheldBackgroundColor': 'Фон окна чата',
+    '--sheldBlurStrength': 'Размытие окна чата',
     '--customScrollbarColor': 'Полоса прокрутки',
     '--messageTextFontSize': 'Размер текста',
-    '--messageLineHeight': 'Межстрочный интервал',
-    '--messageTextLetterSpacing': 'Разрядка букв',
     '--mesParagraphSpacingTop': 'Отступ абзаца сверху',
     '--mesParagraphSpacingBottom': 'Отступ абзаца снизу',
-    '--charNameFontSize': 'Размер имени персонажа',
-    '--userNameFontSize': 'Размер моего имени',
-    '--custom-ChatAvatar': 'Размер аватарки',
-    '--customlastInContext': 'Отметка границы контекста',
-    '--sheldBlurStrength': 'Размытие окна чата',
 };
+
+export const ALLOWED = new Set([
+    ...Object.keys(LABELS),
+    ...Object.values(ST_COLORS).map(([name]) => name),
+]);
 
 // Значение уезжает прямо в CSS, поэтому режем всё, чем можно закрыть
 // объявление и дописать своё: точку с запятой, скобки блока, комментарии.
@@ -106,7 +107,7 @@ export function varsFromCss(css) {
     if (typeof css !== 'string') return vars;
     for (const [, name, value] of css.matchAll(/(--[A-Za-z][\w-]*)\s*:\s*([^;{}]+)/g)) {
         const clean = value.replace(/!important/i, '').trim();
-        if (isSafeVarName(name) && isSafeCssValue(clean)) vars[name] = clean;
+        if (ALLOWED.has(name) && isSafeCssValue(clean)) vars[name] = clean;
     }
     return vars;
 }
@@ -126,7 +127,7 @@ function fromMoonlitPreset(data) {
         // Галки — это переключатели самого Moonlit, они общие для всех тем.
         if (typeof value !== 'string' || key === 'rawCustomCss') continue;
         const name = '--' + key;
-        if (isSafeVarName(name) && isSafeCssValue(value)) vars[name] = value.trim();
+        if (ALLOWED.has(name) && isSafeCssValue(value)) vars[name] = value.trim();
     }
     return { name: data.presetName, vars };
 }
@@ -167,7 +168,7 @@ export function normalizeTheme(data = {}) {
     if (!data || typeof data !== 'object') return theme;
 
     for (const [name, value] of Object.entries(data.vars || {})) {
-        if (isSafeVarName(name) && isSafeCssValue(value)) theme.vars[name] = String(value).trim();
+        if (ALLOWED.has(name) && isSafeCssValue(value)) theme.vars[name] = String(value).trim();
     }
 
     if (typeof data.background === 'string' && data.background.length < 500
@@ -326,7 +327,8 @@ export function groupVars(theme) {
     }
     const order = Object.values(ST_COLORS).map(([name]) => name);
     smart.sort((a, b) => order.indexOf(a) - order.indexOf(b));
-    other.sort((a, b) => (LABELS[a] ? 0 : 1) - (LABELS[b] ? 0 : 1) || a.localeCompare(b));
+    const rest = Object.keys(LABELS);
+    other.sort((a, b) => rest.indexOf(a) - rest.indexOf(b));
     return { smart, other };
 }
 
