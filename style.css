@@ -56,29 +56,44 @@
     overscroll-behavior: contain;
 }
 
-/* Полоса прокрутки панели — в том же виде, что у Roleplay Tools, чтобы
-   вложенные полосы не выглядели как две разные. */
+/* Полоса прокрутки панели. !important здесь не от лени: тема оформления
+   задаёт свои полосы тоже с !important, и без него правило не побеждает. */
 #wa-editor {
     scrollbar-width: thin;
     scrollbar-color: color-mix(in srgb, var(--SmartThemeQuoteColor, #cd956c) 42%, transparent) transparent;
 }
-#wa-editor *::-webkit-scrollbar {
-    width: 7px;
-    height: 7px;
+#wa-editor *::-webkit-scrollbar,
+#wa-editor .wa-body::-webkit-scrollbar {
+    width: 6px !important;
+    height: 6px !important;
 }
 #wa-editor *::-webkit-scrollbar-track,
-#wa-editor *::-webkit-scrollbar-corner {
-    background: transparent;
+#wa-editor *::-webkit-scrollbar-corner,
+#wa-editor .wa-body::-webkit-scrollbar-track {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
 }
-#wa-editor *::-webkit-scrollbar-thumb {
-    background: color-mix(in srgb, var(--SmartThemeQuoteColor, #cd956c) 40%, transparent);
-    background-clip: padding-box;
-    border: 2px solid transparent;
-    border-radius: 4px;
+#wa-editor *::-webkit-scrollbar-thumb,
+#wa-editor .wa-body::-webkit-scrollbar-thumb {
+    width: 6px !important;
+    min-height: 24px !important;
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor, #cd956c) 45%, transparent) !important;
+    background-clip: padding-box !important;
+    border: 1px solid transparent !important;
+    border-radius: 4px !important;
+    box-shadow: none !important;
 }
-#wa-editor *::-webkit-scrollbar-thumb:hover {
-    background: color-mix(in srgb, var(--SmartThemeQuoteColor, #cd956c) 70%, transparent);
-    background-clip: padding-box;
+#wa-editor *::-webkit-scrollbar-thumb:hover,
+#wa-editor .wa-body::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor, #cd956c) 75%, transparent) !important;
+    background-clip: padding-box !important;
+}
+/* Кнопки-стрелочки на концах полосы место занимают, а пользы не дают. */
+#wa-editor *::-webkit-scrollbar-button {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
 }
 
 #wa-editor .wa-check { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
@@ -307,7 +322,12 @@ label.wa-btn { display: inline-flex; align-items: center; justify-content: cente
     min-width: 0 !important;
     height: 100% !important;
     min-height: 0 !important;
-    max-height: none !important;
+    /* Если в сохранённой раскладке у блока осталась большая высота, панель
+       вырастает за край экрана и её низ становится недостижим внутренней
+       прокруткой. Ограничиваем высоту видимой областью: тогда конец списка
+       всегда докручивается внутри панели.
+       55dvh — запас под шапку Таверны, вкладки оболочки и полосу токенов. */
+    max-height: 55dvh !important;
     z-index: auto !important;
     overflow: hidden;
     border: 0;
