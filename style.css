@@ -1,5 +1,5 @@
 /* =========================================================================
-   Wani Atelier — оформление самой панели редактора.
+   Atelier — оформление самой панели редактора.
    Разметку сообщений и общий вид Таверны расширение не трогает: этим
    занимается тема оформления.
    ========================================================================= */
@@ -296,32 +296,33 @@ label.wa-btn { display: inline-flex; align-items: center; justify-content: cente
 
 /* ---------- встроенный режим Roleplay Tools ---------- */
 
-/* Размеры прибиты жёстко, как в Character Visual: иначе базовое
-   height: calc(100dvh - 75px) местами остаётся сильнее, панель вылезает за
-   своё гнездо и прокручиваться начинает ещё и страница оболочки — отсюда
-   вторая полоса. */
+/* Во встроенном режиме панель не прокручивается сама: она растёт по
+   содержимому, а прокручивает всё внешняя полоса страницы оболочки.
+   Поэтому здесь снимаются и высота, и внутренняя прокрутка. */
 #rpt-shell #wa-editor[data-rpt-docked=true] {
     position: relative !important;
     inset: auto !important;
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
-    height: 100% !important;
+    height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
     z-index: auto !important;
+    overflow: visible !important;
     border: 0;
     border-radius: 0;
     box-shadow: none;
     resize: none;
-    overflow: hidden;
 }
 #rpt-shell #wa-editor[data-rpt-docked=true] .wa-body {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: visible !important;
 }
+/* Своя полоса не нужна, значит и развязывать её не от чего. */
+#rpt-shell #wa-editor[data-rpt-docked=true] .wa-body { overscroll-behavior: auto; }
+#rpt-shell #wa-editor[data-rpt-docked=true] .wa-album { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 #rpt-shell #wa-editor[data-rpt-docked=true] > .wa-header > .wa-close { display: none; }
 #wa-editor .wa-host-controls { display: flex; }
 
