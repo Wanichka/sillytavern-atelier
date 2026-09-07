@@ -32,12 +32,18 @@ test('импорт пресета Moonlit берёт значения и отб�
     assert.equal(theme.vars['--customThemeColor'], 'rgba(185, 145, 75, 1)');
     assert.equal(theme.vars['--sheldBackgroundColor'], 'rgba(7, 9, 7, 0.93)');
     assert.equal(theme.vars['--messageTextFontSize'], '17px');
-    assert.equal(theme.vars['--messageLineHeight'], 'calc(var(--mainFontSize) + .5rem)');
-    assert.equal(theme.vars['--customCSS-ChatGradientBlur'].startsWith('linear-gradient'), true);
     // логические переключатели Moonlit — не переменные
     assert.equal('--hideAvatarBorder' in theme.vars, false);
     assert.equal('--forceFixedMenuHeight' in theme.vars, false);
     assert.equal('--rawCustomCss' in theme.vars, false);
+    // внутренняя кухня темы оформления в список не входит
+    for (const skipped of ['--messageLineHeight', '--messageTextLetterSpacing',
+        '--charNameFontSize', '--userNameFontSize', '--custom-ChatAvatar',
+        '--customlastInContext', '--customCSS-ChatGradientBlur',
+        '--custom-EchoAvatarWidth', '--customRippleAvatarWidth', '--VN-sheld-height',
+        '--favoriteSymbol', '--mobileQRsBarHeight']) {
+        assert.equal(skipped in theme.vars, false, skipped + ' не должен попадать в тему');
+    }
 });
 
 test('два файла одной темы дополняют друг друга', () => {
@@ -46,16 +52,22 @@ test('два файла одной темы дополняют друг друг
         vars: { ...importTheme(moonlit).vars, ...importTheme(stTheme).vars },
     });
     const { smart, other } = groupVars(merged);
-    assert.ok(smart.length >= 10, 'цвета Таверны: ' + smart.length);
-    assert.ok(other.length >= 15, 'переменные Moonlit: ' + other.length);
+    assert.equal(smart.length, 10, 'цвета Таверны');
+    assert.equal(other.length, 14, 'настройки темы оформления');
+    assert.equal(Object.keys(merged.vars).length, 24);
+    // у каждого значения есть понятная подпись, безымянных строк нет
+    for (const name of [...smart, ...other]) {
+        assert.notEqual(labelFor(name), name, 'без подписи: ' + name);
+    }
     assert.equal(labelFor('--SmartThemeQuoteColor'), 'Реплики');
     assert.equal(labelFor('--sheldBackgroundColor'), 'Фон окна чата');
-    assert.equal(labelFor('--VN-sheld-height'), '--VN-sheld-height');
 });
 
 test('в CSS уходит ровно то, что в снимке', () => {
-    const css = cssVariables(normalizeTheme({ vars: { '--a': 'red', '--b': '2px' } }));
-    assert.equal(css, '--a:red;--b:2px;');
+    const css = cssVariables(normalizeTheme({
+        vars: { '--mainFontFamily': 'Georgia, serif', '--messageTextFontSize': '17px' },
+    }));
+    assert.equal(css, '--mainFontFamily:Georgia, serif;--messageTextFontSize:17px;');
 });
 
 test('опасные значения и имена не проходят', () => {
@@ -67,8 +79,15 @@ test('опасные значения и имена не проходят', () =
     assert.equal(isSafeVarName('color'), false);
     assert.equal(isSafeVarName('--a;b'), false);
 
-    const theme = normalizeTheme({ vars: { '--ok': 'red', 'плохое': 'red', '--bad': 'red;}x{' } });
-    assert.deepEqual(Object.keys(theme.vars), ['--ok']);
+    const theme = normalizeTheme({
+        vars: {
+            '--customThemeColor': 'red',              // разрешено
+            'customThemeColor': 'red',                // не переменная
+            '--customTopBarColor': 'red;}x{',         // опасное значение
+            '--VN-sheld-height': '40dvh',             // не в белом списке
+        },
+    });
+    assert.deepEqual(Object.keys(theme.vars), ['--customThemeColor']);
 });
 
 test('custom_css отдаёт только объявления переменных', () => {
