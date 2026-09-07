@@ -611,9 +611,12 @@ function start() {
 
     // ---- применение ------------------------------------------------------
 
+    // На страницу идёт тема персонажа. Тема из редактора показывается только
+    // пока панель открыта — чтобы правки было видно сразу.
     function activeTheme() {
-        if (editingId && drafts.has(editingId)) return normalizeTheme(drafts.get(editingId));
-        if (editingId) return normalizeTheme(store.themes[editingId]);
+        if (!panel.hidden && editingId && store.themes[editingId]) {
+            return normalizeTheme(drafts.get(editingId) || store.themes[editingId]);
+        }
         return themeFor(store, currentKey);
     }
 
@@ -692,7 +695,7 @@ function start() {
     // сеткой миниатюр — нет. Откладываем её до того, как панель покажут.
     c.eventSource.on(c.eventTypes.CHAT_CHANGED, () => {
         currentKey = characterKey(ctx());
-        if (!dirty()) editingId = themeIdFor(store, currentKey);
+        editingId = themeIdFor(store, currentKey);
         apply();
         if (panel.hidden) pendingRender = true;
         else render();
