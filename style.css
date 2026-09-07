@@ -51,6 +51,34 @@
     overflow: auto;
     flex: 1;
     min-height: 0;
+    /* Внутренняя прокрутка не передаёт эстафету внешней, когда доехала до
+       края: иначе панель и страница оболочки дёргают друг друга. */
+    overscroll-behavior: contain;
+}
+
+/* Полоса прокрутки панели — в том же виде, что у Roleplay Tools, чтобы
+   вложенные полосы не выглядели как две разные. */
+#wa-editor {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--SmartThemeQuoteColor, #cd956c) 42%, transparent) transparent;
+}
+#wa-editor *::-webkit-scrollbar {
+    width: 7px;
+    height: 7px;
+}
+#wa-editor *::-webkit-scrollbar-track,
+#wa-editor *::-webkit-scrollbar-corner {
+    background: transparent;
+}
+#wa-editor *::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor, #cd956c) 40%, transparent);
+    background-clip: padding-box;
+    border: 2px solid transparent;
+    border-radius: 4px;
+}
+#wa-editor *::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor, #cd956c) 70%, transparent);
+    background-clip: padding-box;
 }
 
 #wa-editor .wa-check { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
@@ -268,21 +296,32 @@ label.wa-btn { display: inline-flex; align-items: center; justify-content: cente
 
 /* ---------- встроенный режим Roleplay Tools ---------- */
 
+/* Размеры прибиты жёстко, как в Character Visual: иначе базовое
+   height: calc(100dvh - 75px) местами остаётся сильнее, панель вылезает за
+   своё гнездо и прокручиваться начинает ещё и страница оболочки — отсюда
+   вторая полоса. */
 #rpt-shell #wa-editor[data-rpt-docked=true] {
-    position: relative;
-    inset: auto;
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    height: 100%;
-    max-height: none;
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    z-index: auto !important;
     border: 0;
     border-radius: 0;
     box-shadow: none;
     resize: none;
     overflow: hidden;
 }
-#rpt-shell #wa-editor[data-rpt-docked=true] .wa-body { overflow: auto; }
+#rpt-shell #wa-editor[data-rpt-docked=true] .wa-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
 #rpt-shell #wa-editor[data-rpt-docked=true] > .wa-header > .wa-close { display: none; }
 #wa-editor .wa-host-controls { display: flex; }
 
