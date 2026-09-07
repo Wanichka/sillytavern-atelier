@@ -53,6 +53,8 @@ function start() {
 
     const drafts = new Map();
     const hostListeners = new AbortController();
+    // Панель закрыта — перерисовывать её при смене чата незачем.
+    let pendingRender = false;
 
     const persist = () => {
         ctx().extensionSettings[KEY] = store;
@@ -639,7 +641,8 @@ function start() {
             );
         }
 
-        live.textContent = rules.join('');
+        const next = rules.join('');
+        if (live.textContent !== next) live.textContent = next;
     }
 
     // ---- открытие --------------------------------------------------------
@@ -661,7 +664,7 @@ function start() {
         open = value ?? !open;
         panel.hidden = !open;
         reserve();
-        if (open) render();
+        if (open) { pendingRender = false; render(); }
     }
 
     function connect() {
@@ -677,18 +680,22 @@ function start() {
             display: 'flex',
             minHeight: 300,
             onMount() { panel.hidden = false; reserve(); },
-            onShow() { render(); },
+            onShow() { pendingRender = false; render(); },
             onRelease() { panel.hidden = !open; reserve(); },
         });
     }
 
     window.addEventListener('wani-roleplay-tools:ready', connect, { signal: hostListeners.signal });
 
+    // При смене чата обязательна только подстановка стилей: она дешёвая.
+    // Перерисовка панели со всеми строками и, если открыта вкладка «Фон», с
+    // сеткой миниатюр — нет. Откладываем её до того, как панель покажут.
     c.eventSource.on(c.eventTypes.CHAT_CHANGED, () => {
         currentKey = characterKey(ctx());
         if (!dirty()) editingId = themeIdFor(store, currentKey);
         apply();
-        render();
+        if (panel.hidden) pendingRender = true;
+        else render();
     });
 
     // ---- перетаскивание кнопки -------------------------------------------
