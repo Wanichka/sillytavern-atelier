@@ -322,12 +322,7 @@ label.wa-btn { display: inline-flex; align-items: center; justify-content: cente
     min-width: 0 !important;
     height: 100% !important;
     min-height: 0 !important;
-    /* Если в сохранённой раскладке у блока осталась большая высота, панель
-       вырастает за край экрана и её низ становится недостижим внутренней
-       прокруткой. Ограничиваем высоту видимой областью: тогда конец списка
-       всегда докручивается внутри панели.
-       55dvh — запас под шапку Таверны, вкладки оболочки и полосу токенов. */
-    max-height: 55dvh !important;
+    max-height: none !important;
     z-index: auto !important;
     overflow: hidden;
     border: 0;
