@@ -1,8 +1,9 @@
 import {
-    KEY, FONTS, VERSION,
-    normalizeSettings, normalizeName, isSafeFont, newThemeId,
-    readStore, characterKey, themeIdFor, settingsFor,
-    backgroundUrl, backgroundNames, themeVariables,
+    KEY, VERSION, BACKGROUND,
+    normalizeTheme, normalizeName, newThemeId, readStore, importTheme,
+    characterKey, themeIdFor, themeFor,
+    backgroundUrl, backgroundNames, cssVariables, groupVars, labelFor,
+    parseColor, formatColor, isSafeCssValue,
 } from './core.js';
 
 const ctx = () => SillyTavern.getContext();
@@ -45,11 +46,10 @@ function start() {
     let currentKey = characterKey(c);
     let editingId = themeIdFor(store, currentKey);
     let open = false;
-    let tab = 'colors';
+    let tab = 'theme';
     let album = null;
     let albumError = '';
     let busy = false;
-    let localFonts = null;
 
     const drafts = new Map();
     const hostListeners = new AbortController();
@@ -64,16 +64,14 @@ function start() {
 
     function draft() {
         if (!editingId) return null;
-        if (!drafts.has(editingId)) {
-            drafts.set(editingId, normalizeSettings(store.themes[editingId]));
-        }
+        if (!drafts.has(editingId)) drafts.set(editingId, normalizeTheme(store.themes[editingId]));
         return drafts.get(editingId);
     }
 
     function dirty() {
         if (!editingId || !drafts.has(editingId)) return false;
         return JSON.stringify(drafts.get(editingId))
-            !== JSON.stringify(normalizeSettings(store.themes[editingId]));
+            !== JSON.stringify(normalizeTheme(store.themes[editingId]));
     }
 
     // ---- каркас ----------------------------------------------------------
@@ -102,8 +100,7 @@ function start() {
     enableLabel.htmlFor = 'wa-enable';
     enableLabel.append(enable, document.createTextNode('Применять оформление Atelier'));
 
-    const picker = el('select');
-    picker.classList.add('wa-picker');
+    const picker = el('select', 'wa-picker');
     picker.setAttribute('aria-label', 'Редактируемая тема');
     picker.onchange = () => {
         editingId = picker.value || null;
@@ -113,29 +110,28 @@ function start() {
 
     const icons = el('div', 'wa-icons');
     const nav = el('nav', 'wa-tabs');
-    nav.setAttribute('aria-label', 'Разделы оформления');
+    nav.setAttribute('aria-label', 'Разделы');
     const content = el('div', 'wa-content');
     const status = el('div', 'wa-status');
     status.setAttribute('aria-live', 'polite');
 
     const foot = el('footer', 'wa-footer');
-    const save = btn('Сохранить тему', () => {
-        if (!editingId) return;
-        store.themes[editingId] = {
-            name: store.themes[editingId].name,
-            ...normalizeSettings(draft()),
-        };
-        drafts.delete(editingId);
-        persist();
-        render();
-        apply();
-        status.textContent = 'Тема сохранена';
-    }, 'wa-primary');
-    foot.append(save, btn('Отменить', () => {
-        if (editingId) drafts.delete(editingId);
-        render();
-        apply();
-    }));
+    foot.append(
+        btn('Сохранить тему', () => {
+            if (!editingId) return;
+            store.themes[editingId] = normalizeTheme(draft());
+            drafts.delete(editingId);
+            persist();
+            render();
+            apply();
+            status.textContent = 'Тема сохранена';
+        }, 'wa-primary'),
+        btn('Отменить', () => {
+            if (editingId) drafts.delete(editingId);
+            render();
+            apply();
+        }),
+    );
 
     body.append(enableLabel, picker, icons, nav, content, status, foot);
     panel.append(header, body);
@@ -150,14 +146,11 @@ function start() {
     document.head.append(live);
     document.body.append(panel, launcher);
 
-    // ---- поля ------------------------------------------------------------
+    // ---- мелкие помощники ------------------------------------------------
 
-    function set(key, value) {
-        const current = draft();
-        if (!current) return;
-        current[key] = value;
+    function touched(message = 'Есть несохранённые изменения') {
         apply();
-        status.textContent = 'Есть несохранённые изменения';
+        status.textContent = message;
     }
 
     function field(label, control, extra) {
@@ -166,67 +159,6 @@ function start() {
         if (extra !== undefined) caption.append(el('output', '', String(extra)));
         wrapper.append(caption, control);
         return wrapper;
-    }
-
-    function colorRow(label, key, opacityKey) {
-        const row = el('div', 'wa-color');
-        row.append(el('span', 'wa-color-label', label));
-
-        const swatch = el('input', 'wa-swatch');
-        swatch.type = 'color';
-        swatch.value = draft()[key];
-
-        const hex = el('input', 'wa-hex');
-        hex.type = 'text';
-        hex.value = draft()[key];
-        hex.spellcheck = false;
-
-        swatch.oninput = () => {
-            hex.value = swatch.value;
-            set(key, swatch.value);
-        };
-        hex.onchange = () => {
-            const value = hex.value.trim();
-            if (/^#[0-9a-f]{6}$/i.test(value)) {
-                swatch.value = value;
-                set(key, value);
-            } else {
-                hex.value = draft()[key];
-                status.textContent = 'Цвет пишется как #rrggbb';
-            }
-        };
-
-        const line = el('div', 'wa-color-line');
-        line.append(swatch, hex);
-
-        if (opacityKey) {
-            const opacity = el('input', 'wa-opacity');
-            opacity.type = 'range';
-            opacity.min = 0;
-            opacity.max = 100;
-            opacity.value = draft()[opacityKey];
-            const out = el('output', '', String(opacity.value));
-            opacity.oninput = () => {
-                out.textContent = opacity.value;
-                set(opacityKey, Number(opacity.value));
-            };
-            line.append(opacity, out);
-        }
-
-        row.append(line);
-        return row;
-    }
-
-    function select(label, key, options) {
-        const input = el('select');
-        for (const [value, name] of options) {
-            const option = el('option', '', name);
-            option.value = value;
-            input.append(option);
-        }
-        input.value = draft()[key];
-        input.onchange = () => set(key, input.value);
-        return field(label, input);
     }
 
     function range(label, key, min, max, step = 1) {
@@ -241,31 +173,95 @@ function start() {
         const out = wrapper.querySelector('output');
         input.oninput = () => {
             out.textContent = input.value;
-            set(key, Number(input.value));
+            draft()[key] = Number(input.value);
+            touched();
         };
         return wrapper;
     }
 
+    // ---- строка переменной ----------------------------------------------
+
+    // Цвет показывается квадратиком с прозрачностью, всё остальное — полем.
+    function varRow(name) {
+        const value = draft().vars[name];
+        const color = parseColor(value);
+
+        const row = el('div', 'wa-color');
+        const label = el('span', 'wa-color-label', labelFor(name));
+        if (labelFor(name) !== name) label.title = name;
+        row.append(label);
+
+        const line = el('div', 'wa-color-line');
+
+        if (!color) {
+            const input = el('input');
+            input.type = 'text';
+            input.value = value;
+            input.spellcheck = false;
+            input.onchange = () => {
+                const next = input.value.trim();
+                if (!isSafeCssValue(next)) {
+                    input.value = draft().vars[name];
+                    status.textContent = 'Такое значение использовать нельзя';
+                    return;
+                }
+                draft().vars[name] = next;
+                touched();
+            };
+            line.append(input);
+            row.append(line);
+            return row;
+        }
+
+        const swatch = el('input', 'wa-swatch');
+        swatch.type = 'color';
+        swatch.value = color.hex;
+
+        const hex = el('input', 'wa-hex');
+        hex.type = 'text';
+        hex.value = color.hex;
+        hex.spellcheck = false;
+
+        const alpha = el('input', 'wa-opacity');
+        alpha.type = 'range';
+        alpha.min = 0;
+        alpha.max = 100;
+        alpha.value = color.alpha;
+        const out = el('output', '', String(color.alpha));
+
+        const write = () => {
+            draft().vars[name] = formatColor(swatch.value, Number(alpha.value));
+            touched();
+        };
+
+        swatch.oninput = () => { hex.value = swatch.value; write(); };
+        hex.onchange = () => {
+            const next = hex.value.trim();
+            if (!/^#[0-9a-f]{6}$/i.test(next)) {
+                hex.value = swatch.value;
+                status.textContent = 'Цвет пишется как #rrggbb';
+                return;
+            }
+            swatch.value = next;
+            write();
+        };
+        alpha.oninput = () => { out.textContent = alpha.value; write(); };
+
+        line.append(swatch, hex, alpha, out);
+        row.append(line);
+        return row;
+    }
+
     // ---- вкладки ---------------------------------------------------------
 
-    const sections = [
-        ['colors', 'Цвета'],
-        ['background', 'Фон'],
-        ['text', 'Текст'],
-    ];
-
-    for (const [id, label] of sections) {
-        const button = btn(label, () => {
-            tab = id;
-            renderContent();
-        });
+    for (const [id, label] of [['theme', 'Тема'], ['background', 'Фон']]) {
+        const button = btn(label, () => { tab = id; renderContent(); });
         button.dataset.tab = id;
         nav.append(button);
     }
 
     function characterName() {
-        const list = ctx().characters || [];
-        return list.find(x => 'char:' + x.avatar === currentKey)?.name || null;
+        return (ctx().characters || []).find(x => 'char:' + x.avatar === currentKey)?.name || null;
     }
 
     function render() {
@@ -285,13 +281,12 @@ function start() {
         if (editingId && !store.themes[editingId]) editingId = null;
         picker.value = editingId || '';
 
-        renderThemeRow();
+        renderIcons();
         renderContent();
     }
 
-    // Все кнопки одним рядом: управление темой, привязка, обмен.
-    function renderThemeRow() {
-        icons.replaceChildren(iconBtn('fa-plus', 'Новая тема', createTheme));
+    function renderIcons() {
+        icons.replaceChildren(importControl());
         if (!editingId) return;
 
         const theme = store.themes[editingId];
@@ -306,10 +301,10 @@ function start() {
             }),
             iconBtn('fa-clone', 'Дублировать', () => {
                 const id = newThemeId();
-                store.themes[id] = {
-                    ...normalizeSettings(drafts.get(editingId) || theme),
-                    name: normalizeName(theme.name + ' (копия)'),
-                };
+                store.themes[id] = normalizeTheme({
+                    ...(drafts.get(editingId) || theme),
+                    name: theme.name + ' (копия)',
+                });
                 editingId = id;
                 persist();
                 render();
@@ -334,7 +329,7 @@ function start() {
         const assigned = currentKey && store.assignments[currentKey] === editingId;
         const pin = iconBtn('fa-thumbtack',
             currentKey
-                ? (assigned ? `Открепить от: ${characterName() || 'этот персонаж'}` : `Закрепить за: ${characterName() || 'этот персонаж'}`)
+                ? (assigned ? `Открепить от: ${characterName() || 'персонаж'}` : `Закрепить за: ${characterName() || 'персонаж'}`)
                 : 'В групповом чате закрепить нельзя',
             () => {
                 if (assigned) delete store.assignments[currentKey];
@@ -354,31 +349,14 @@ function start() {
         });
         star.setAttribute('aria-pressed', String(store.defaultThemeId === editingId));
 
-        icons.append(pin, star, el('span', 'wa-sep'), exportBtn(), importControl());
-    }
-
-    function createTheme() {
-        const name = prompt('Название темы', 'Новая тема');
-        if (name === null) return;
-        const id = newThemeId();
-        store.themes[id] = { name: normalizeName(name), ...normalizeSettings(null) };
-        if (!store.defaultThemeId) store.defaultThemeId = id;
-        editingId = id;
-        persist();
-        render();
-        apply();
-        status.textContent = 'Тема создана';
+        icons.append(pin, star, el('span', 'wa-sep'), exportBtn());
     }
 
     function exportBtn() {
-        return iconBtn('fa-file-export', 'Экспорт темы в файл', () => {
-            const theme = store.themes[editingId];
-            const payload = {
-                format: 'wani-atelier',
-                version: VERSION,
-                theme: { name: theme.name, ...normalizeSettings(drafts.get(editingId) || theme) },
-            };
-            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        return iconBtn('fa-file-export', 'Сохранить тему в файл', () => {
+            const theme = normalizeTheme(drafts.get(editingId) || store.themes[editingId]);
+            const blob = new Blob([JSON.stringify({ format: 'wani-atelier', version: VERSION, theme }, null, 2)],
+                { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const link = el('a');
             link.href = url;
@@ -388,6 +366,9 @@ function start() {
         });
     }
 
+    // Один файл покрывает половину картинки: цвета текста лежат в теме
+    // Таверны, а обвязка — в пресете Moonlit. Поэтому импорт умеет
+    // дополнять уже открытую тему, а не только создавать новую.
     function importControl() {
         const input = el('input');
         input.type = 'file';
@@ -397,26 +378,40 @@ function start() {
             const file = input.files[0];
             if (!file) return;
             try {
-                if (file.size > 1000000) throw Error('Файл слишком большой');
-                const data = JSON.parse(await file.text());
-                if (data.format !== 'wani-atelier' || !data.theme) throw Error('Это не тема Atelier');
-                const id = newThemeId();
-                store.themes[id] = {
-                    name: normalizeName(data.theme.name, 'Импортированная тема'),
-                    ...normalizeSettings(data.theme),
-                };
-                editingId = id;
-                persist();
-                render();
-                apply();
-                status.textContent = 'Тема импортирована';
+                if (file.size > 2000000) throw Error('Файл слишком большой');
+                const incoming = importTheme(JSON.parse(await file.text()));
+                const count = Object.keys(incoming.vars).length;
+                const open = editingId && store.themes[editingId];
+
+                if (open && confirm(
+                    `В файле «${incoming.name}»: ${count} значений.\n\n`
+                    + `ОК — добавить их в тему «${store.themes[editingId].name}».\n`
+                    + 'Отмена — создать отдельную тему.')) {
+                    const target = draft();
+                    Object.assign(target.vars, incoming.vars);
+                    if (incoming.background) target.background = incoming.background;
+                    apply();
+                    renderContent();
+                    status.textContent = `Добавлено значений: ${count}. Проверь и сохрани тему.`;
+                } else {
+                    const id = newThemeId();
+                    store.themes[id] = incoming;
+                    if (!store.defaultThemeId) store.defaultThemeId = id;
+                    editingId = id;
+                    persist();
+                    render();
+                    apply();
+                    status.textContent = `Тема «${incoming.name}» создана, значений: ${count}`;
+                }
             } catch (e) {
                 status.textContent = e.message;
+            } finally {
+                input.value = '';
             }
         };
         const label = el('label', 'wa-btn wa-icon-btn');
         label.htmlFor = 'wa-import';
-        label.title = 'Импорт темы из файла';
+        label.title = 'Загрузить тему из файла (Таверна, Moonlit или Atelier)';
         label.append(el('i', 'fa-solid fa-file-import'), input);
         return label;
     }
@@ -428,100 +423,49 @@ function start() {
         content.replaceChildren();
 
         if (!editingId) {
-            content.append(
-                el('p', 'wa-help', 'Тем пока нет. Создай первую — назови как хочешь, потом закрепишь за персонажем.'),
-                btn('Новая тема', createTheme, 'wa-primary'),
-            );
+            content.append(el('p', 'wa-help',
+                'Тем пока нет. Настрой оформление как обычно — в Таверне и в теме оформления, '
+                + 'выгрузи файл темы и загрузи его сюда. Дальше останется закрепить тему за персонажем.'));
             status.textContent = '';
             return;
         }
 
-        if (tab === 'colors') renderColors();
+        if (tab === 'theme') renderTheme();
         if (tab === 'background') renderAlbum();
-        if (tab === 'text') renderText();
 
         status.textContent = dirty() ? 'Есть несохранённые изменения' : 'Все изменения сохранены';
     }
 
-    function renderColors() {
-        content.append(el('h5', 'wa-subtitle', 'Текст'));
-        content.append(
-            colorRow('Основной текст', 'text'),
-            colorRow('Реплики', 'quote'),
-            colorRow('Курсив', 'italic'),
-            colorRow('Подчёркивание', 'underline'),
-            colorRow('Акцент', 'accent'),
-            colorRow('Тень текста', 'shadow'),
-        );
-        content.append(el('h5', 'wa-subtitle', 'Подложки'));
-        content.append(
-            colorRow('Сообщения персонажа', 'assistant', 'assistantOpacity'),
-            colorRow('Мои сообщения', 'user', 'userOpacity'),
-            colorRow('Панели', 'panel', 'panelOpacity'),
-            colorRow('Фон чата', 'chat', 'chatOpacity'),
-            colorRow('Границы', 'border'),
-        );
-    }
+    function renderTheme() {
+        const { smart, other } = groupVars(draft());
 
-    function renderText() {
-        const input = el('input');
-        input.type = 'text';
-        input.value = draft().font;
-        input.setAttribute('list', 'wa-fonts');
-        input.spellcheck = false;
-
-        const datalist = el('datalist');
-        datalist.id = 'wa-fonts';
-        for (const value of [...new Set([...FONTS, ...(localFonts || [])])].filter(isSafeFont)) {
-            const option = el('option');
-            option.value = value;
-            datalist.append(option);
-        }
-
-        input.onchange = () => {
-            const value = input.value.trim();
-            if (!isSafeFont(value)) {
-                input.value = draft().font;
-                status.textContent = 'Такое название шрифта использовать нельзя';
-                return;
-            }
-            set('font', value);
-        };
-
-        content.append(field('Шрифт сообщений', input), datalist);
-
-        if (localFonts === null) {
-            content.append(
-                btn('Добавить шрифты с компьютера', loadLocalFonts),
-                el('p', 'wa-help', 'Выбери из списка или впиши название вручную. Кнопка добавляет в список шрифты системы — работает в Chrome, спросит разрешение.'),
-            );
-        } else {
-            content.append(el('p', 'wa-help', `Из системы подтянуто шрифтов: ${localFonts.length}.`));
-        }
-
-        content.append(
-            range('Размер текста', 'fontSize', 12, 28),
-            range('Межстрочный интервал', 'line', 1.2, 2.2, .05),
-            range('Между абзацами', 'gap', 0, 36),
-        );
-    }
-
-    async function loadLocalFonts() {
-        if (typeof window.queryLocalFonts !== 'function') {
-            localFonts = [];
-            status.textContent = 'Этот браузер не умеет читать список системных шрифтов';
-            renderContent();
+        if (!smart.length && !other.length) {
+            content.append(el('p', 'wa-help', 'В этой теме нет значений. Загрузи файл темы кнопкой импорта.'));
             return;
         }
-        try {
-            const found = await window.queryLocalFonts();
-            localFonts = [...new Set(found.map(f => f.family))].filter(isSafeFont).sort();
-            status.textContent = `Найдено шрифтов: ${localFonts.length}`;
-        } catch (e) {
-            localFonts = [];
-            status.textContent = 'Доступ к шрифтам не получен: ' + e.message;
+
+        if (smart.length) {
+            content.append(el('h5', 'wa-subtitle', 'Из темы Таверны'));
+            for (const name of smart) content.append(varRow(name));
         }
-        renderContent();
+        if (other.length) {
+            content.append(el('h5', 'wa-subtitle', 'Из темы оформления'));
+            for (const name of other) content.append(varRow(name));
+        }
+
+        content.append(btn('Убрать лишние значения…', () => {
+            const name = prompt('Какое значение убрать? Впиши имя переменной целиком',
+                [...smart, ...other][0] || '');
+            if (name === null) return;
+            if (!(name in draft().vars)) {
+                status.textContent = 'Такого значения в теме нет';
+                return;
+            }
+            delete draft().vars[name];
+            apply();
+            renderContent();
+            status.textContent = 'Значение убрано. Проверь и сохрани тему.';
+        }));
     }
 
     // ---- фон -------------------------------------------------------------
@@ -531,7 +475,8 @@ function start() {
         top.append(
             btn('Обновить альбом', () => loadAlbum()),
             btn('Без своего фона', () => {
-                set('background', '');
+                draft().background = '';
+                touched();
                 renderContent();
             }),
         );
@@ -563,7 +508,7 @@ function start() {
                 });
                 if (!res.ok) throw Error('Ошибка загрузки ' + res.status);
                 const name = await res.text();
-                if (!drafts.has(owner)) drafts.set(owner, normalizeSettings(store.themes[owner]));
+                if (!drafts.has(owner)) drafts.set(owner, normalizeTheme(store.themes[owner]));
                 drafts.get(owner).background = name;
                 busy = false;
                 await loadAlbum();
@@ -583,7 +528,8 @@ function start() {
             const grid = el('div', 'wa-album');
             for (const name of album) {
                 const button = btn('', () => {
-                    set('background', name);
+                    draft().background = name;
+                    touched();
                     renderContent();
                 });
                 button.title = name;
@@ -606,14 +552,16 @@ function start() {
             content.append(el('p', 'wa-warning', 'Фон недоступен — будет использован запасной.'));
         }
 
-        content.append(
-            select('Масштаб', 'fit', [
-                ['cover', 'Заполнить экран'],
-                ['contain', 'Показать целиком'],
-            ]),
-            range('Затемнение', 'dim', 0, 85),
-            range('Размытие', 'blur', 0, 12),
-        );
+        const fit = el('select');
+        for (const [value, name] of [['cover', 'Заполнить экран'], ['contain', 'Показать целиком']]) {
+            const option = el('option', '', name);
+            option.value = value;
+            fit.append(option);
+        }
+        fit.value = draft().fit;
+        fit.onchange = () => { draft().fit = fit.value; touched(); };
+
+        content.append(field('Масштаб', fit), range('Затемнение', 'dim', 0, 85), range('Размытие', 'blur', 0, 12));
     }
 
     async function loadAlbum() {
@@ -638,11 +586,9 @@ function start() {
         }
     }
 
-    function resolvedBackground(settings) {
-        const candidates = [settings.background];
+    function resolvedBackground(theme) {
         const fallback = store.defaultThemeId && store.themes[store.defaultThemeId]?.background;
-        if (fallback) candidates.push(fallback);
-        for (const name of candidates) {
+        for (const name of [theme.background, fallback]) {
             if (name && (album === null || album.includes(name))) return name;
         }
         return '';
@@ -650,44 +596,33 @@ function start() {
 
     // ---- применение ------------------------------------------------------
 
-    function activeSettings() {
-        if (editingId && drafts.has(editingId)) return normalizeSettings(drafts.get(editingId));
-        if (editingId) return normalizeSettings(store.themes[editingId]);
-        return settingsFor(store, currentKey);
+    function activeTheme() {
+        if (editingId && drafts.has(editingId)) return normalizeTheme(drafts.get(editingId));
+        if (editingId) return normalizeTheme(store.themes[editingId]);
+        return themeFor(store, currentKey);
     }
 
-    // Разметку сообщений Atelier не трогает: расположение портретов, ширина
-    // чата и общий вид остаются за темой оформления. Здесь только цвета,
-    // фон и типографика.
+    // Atelier подставляет переменные и фон. Всю разметку — расположение
+    // портретов, ширину чата, вид панелей — делает тема оформления.
     function apply() {
         document.body.classList.toggle('wa-enabled', store.enabled);
 
-        if (!store.enabled) {
+        const theme = store.enabled ? activeTheme() : null;
+        if (!theme) {
             live.textContent = '';
             return;
         }
 
-        const s = activeSettings();
-        const bg = resolvedBackground(s);
-
-        const rules = [
-            `body.wa-enabled{${themeVariables(s)}}`,
-            `body.wa-enabled #chat .mes_text{`
-            + `font-family:${s.font};`
-            + `font-size:${s.fontSize}px;`
-            + `line-height:${s.line};`
-            + `}`,
-            `body.wa-enabled #chat .mes_text p{margin-bottom:${s.gap}px;}`,
-            `body.wa-enabled #chat .mes_text p:last-child{margin-bottom:0;}`,
-        ];
+        const rules = [`body.wa-enabled{${cssVariables(theme)}}`];
+        const bg = resolvedBackground(theme);
 
         if (bg) {
             rules.push(
-                `body.wa-enabled #bg1,body.wa-enabled #bg_custom{`
-                + `background-image:linear-gradient(rgba(0,0,0,${s.dim / 100}),rgba(0,0,0,${s.dim / 100})),url("${backgroundUrl(bg)}")!important;`
-                + `background-size:${s.fit}!important;`
-                + `filter:blur(${s.blur}px)!important;`
-                + `}`,
+                'body.wa-enabled #bg1,body.wa-enabled #bg_custom{'
+                + `background-image:linear-gradient(rgba(0,0,0,${theme.dim / 100}),rgba(0,0,0,${theme.dim / 100})),url("${backgroundUrl(bg)}")!important;`
+                + `background-size:${theme.fit}!important;`
+                + `filter:blur(${theme.blur}px)!important;`
+                + '}',
             );
         }
 
