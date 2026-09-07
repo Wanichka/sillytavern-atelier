@@ -382,3 +382,24 @@ label.wa-btn { display: inline-flex; align-items: center; justify-content: cente
     border-radius: 7px;
 }
 #wa-editor .wa-font-picker [hidden] { display: none !important; }
+
+/* Font tools are secondary to colors: one compact disclosure by default. */
+#wa-editor .wa-fonts-section { margin: 8px 0; }
+#wa-editor .wa-fonts-section > summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    cursor: pointer;
+    list-style: none;
+    font-size: 12px;
+    font-weight: 700;
+}
+#wa-editor .wa-fonts-section > summary::-webkit-details-marker { display: none; }
+#wa-editor .wa-fonts-section > summary::before { content: '▸'; }
+#wa-editor .wa-fonts-section[open] > summary::before { content: '▾'; }
+#wa-editor .wa-fonts-section > summary:focus-visible {
+    outline: 1px solid var(--SmartThemeQuoteColor, #cd956c);
+    outline-offset: 2px;
+}
+#wa-editor .wa-fonts-section:not([open]) > :not(summary) { display: none !important; }

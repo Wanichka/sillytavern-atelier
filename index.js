@@ -56,6 +56,7 @@ function start() {
     const drafts = new Map();
     const fontLibrary = new FontLibrary(createFontStorage());
     let fontRows = new AbortController();
+    let fontsExpanded = false;
     const hostListeners = new AbortController();
     // Панель закрыта — перерисовывать её при смене чата незачем.
     let pendingRender = false;
@@ -474,9 +475,15 @@ function start() {
     function renderTheme() {
         const { smart, other: allOther } = groupVars(draft());
         const other = allOther.filter(name => !FONT_KEYS.includes(name));
-        content.append(el('h5', 'wa-subtitle', 'Шрифты'));
+        const fontsSection = el('details', 'wa-fonts-section');
+        fontsSection.open = fontsExpanded;
+        fontsSection.append(el('summary', '', 'Шрифты'));
+        fontsSection.addEventListener('toggle', () => {
+            if (fontsSection.isConnected) fontsExpanded = fontsSection.open;
+        });
+        content.append(fontsSection);
         for (const name of FONT_KEYS) {
-            content.append(createFontPicker({
+            fontsSection.append(createFontPicker({
                 name, label: labelFor(name), value: draft().vars[name], library: fontLibrary,
                 signal: fontRows.signal,
                 onChange(value) {
@@ -491,7 +498,7 @@ function start() {
                 },
             }));
         }
-        content.append(el('p', 'wa-help', 'Стандартные варианты используют доступные браузеру шрифты. '
+        fontsSection.append(el('p', 'wa-help', 'Стандартные варианты используют доступные браузеру шрифты. '
             + 'Загруженные файлы хранятся в этом браузере для этого адреса Таверны; '
             + 'в экспорт темы они не входят. Сохраняй исходные файлы отдельно.'));
 
