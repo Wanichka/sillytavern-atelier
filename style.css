@@ -60,6 +60,7 @@
 #wa-editor .wa-picker { margin-bottom: 6px; }
 #wa-editor .wa-icons {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 4px;
     margin-bottom: 4px;
@@ -115,6 +116,19 @@
 }
 #wa-editor .wa-icon-btn:disabled { opacity: .35; cursor: default; }
 #wa-editor .wa-danger { color: #e08a8a; }
+/* Пока есть несохранённые правки, кнопка сохранения подсвечена. */
+#wa-editor .wa-save.wa-dirty {
+    color: var(--SmartThemeQuoteColor, #cd956c);
+    border-color: var(--SmartThemeQuoteColor, #cd956c);
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor, #cd956c) 18%, transparent);
+}
+#wa-editor .wa-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+#wa-editor .wa-group .wa-subtitle { margin-bottom: 0; }
 #wa-editor .wa-close { margin-left: auto; }
 
 #wa-editor .wa-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
@@ -222,15 +236,6 @@ label.wa-btn { display: inline-flex; align-items: center; justify-content: cente
 
 /* ---------- низ панели ---------- */
 
-#wa-editor .wa-footer {
-    display: flex;
-    gap: 8px;
-    position: sticky;
-    bottom: -12px;
-    background: var(--SmartThemeBlurTintColor, #121c21);
-    padding: 12px 0 2px;
-}
-#wa-editor .wa-primary { flex: 1; }
 #wa-editor .wa-status,
 #wa-editor .wa-help {
     font-size: 12px;
