@@ -315,6 +315,8 @@ function start() {
                 const name = prompt('Название темы', theme.name);
                 if (name === null) return;
                 theme.name = normalizeName(name, theme.name);
+                // Сохранение черновика не должно возвращать прежнее название.
+                if (drafts.has(editingId)) drafts.get(editingId).name = theme.name;
                 persist();
                 render();
             }),
