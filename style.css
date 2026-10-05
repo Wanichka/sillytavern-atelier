@@ -155,20 +155,24 @@
     opacity: .6;
 }
 
-/* Закрепление и тема по умолчанию. */
-#wa-editor .wa-assign { display: flex; gap: 6px; margin-bottom: 6px; }
+/* Закрепление и тема по умолчанию. Компактные «таблетки» по ширине текста,
+   чтобы не путались с вкладками «Тема / Фон». */
+#wa-editor .wa-assign { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 4px; }
 #wa-editor .wa-assign[hidden] { display: none; }
 #wa-editor .wa-toggle {
-    flex: 1 1 0;
+    flex: 0 1 auto;
     min-width: 0;
+    min-height: 0;
+    padding: 3px 10px;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 7px;
+    gap: 6px;
+    font-size: 12px;
+    line-height: 1.4;
+    border-radius: 999px;
 }
-#wa-editor .wa-toggle:last-child { flex: 0 0 auto; }
 #wa-editor .wa-toggle span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#wa-editor .wa-toggle i { font-size: 12px; opacity: .6; }
+#wa-editor .wa-toggle i { font-size: 10px; opacity: .6; }
 #wa-editor .wa-toggle[aria-pressed=true] i { opacity: 1; color: var(--SmartThemeQuoteColor, #cd956c); }
 #wa-editor .wa-toggle:disabled { opacity: .45; cursor: default; filter: none; }
 
