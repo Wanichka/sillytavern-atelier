@@ -151,6 +151,18 @@ export function importTheme(data) {
     throw Error('Не узнаю формат: нужна тема Таверны, пресет Moonlit или тема Atelier');
 }
 
+// Снимок того, что сейчас на экране. Таверна и тема оформления уже
+// выставили свои переменные — остаётся прочитать те, что из белого списка.
+// read(name) возвращает значение переменной строкой (пустой, если её нет).
+export function snapshotVars(read) {
+    const vars = {};
+    for (const name of ALLOWED) {
+        const value = String(read(name) ?? '').trim();
+        if (value && isSafeCssValue(value)) vars[name] = value;
+    }
+    return vars;
+}
+
 // ---- тема ----------------------------------------------------------------
 
 export const BACKGROUND = Object.freeze({ background: '', fit: 'cover', dim: 0, blur: 0 });
