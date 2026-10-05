@@ -5,7 +5,7 @@ import {
     normalizeTheme, normalizeName, newThemeId, readStore, importTheme,
     characterKey, themeIdFor, themeFor,
     backgroundUrl, backgroundNames, cssVariables, groupVars, labelFor,
-    parseColor, formatColor, isSafeCssValue,
+    parseColor, formatColor, isSafeCssValue, snapshotVars,
 } from './core.js';
 
 const ctx = () => SillyTavern.getContext();
@@ -52,6 +52,8 @@ function start() {
     let album = null;
     let albumError = '';
     let busy = false;
+    // Файл уже прочитан, ждём ответа: дополнить открытую тему или создать новую.
+    let pendingImport = null;
 
     const drafts = new Map();
     const fontLibrary = new FontLibrary(createFontStorage());
@@ -115,14 +117,42 @@ function start() {
         apply();
     };
 
-    const icons = el('div', 'wa-icons');
+    // Строка выбора: список тем, «+» и меню «⋯».
+    const bar = el('div', 'wa-bar');
+    // Закрепление за персонажем и тема по умолчанию — главное, ради чего
+    // всё затевалось, поэтому это кнопки с текстом, а не иконки в ряду.
+    const assign = el('div', 'wa-assign');
+    const ask = el('div', 'wa-ask');
+    ask.setAttribute('aria-live', 'polite');
+
+    const saveBar = el('div', 'wa-savebar');
+    const saveBtn = btn('Сохранить', () => saveTheme(), 'wa-primary');
+    saveBtn.setAttribute('aria-label', 'Сохранить тему');
+    saveBar.append(
+        el('span', '', 'Есть несохранённые правки'),
+        saveBtn,
+        btn('Отменить', () => {
+            drafts.delete(editingId);
+            render();
+            apply();
+            status.textContent = 'Правки отменены';
+        }),
+    );
+
+    const fileInput = el('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.json';
+    fileInput.id = 'wa-import';
+    fileInput.onchange = () => onImportFile();
+
+    let menu = null;
     const nav = el('nav', 'wa-tabs');
     nav.setAttribute('aria-label', 'Разделы');
     const content = el('div', 'wa-content');
     const status = el('div', 'wa-status');
     status.setAttribute('aria-live', 'polite');
 
-    body.append(enableLabel, picker, icons, nav, content, status);
+    body.append(enableLabel, bar, assign, ask, saveBar, nav, content, status, fileInput);
     panel.append(header, body);
 
     const launcher = btn('✦', () => toggle(), 'wa-launcher-btn');
@@ -137,11 +167,13 @@ function start() {
 
     // ---- мелкие помощники ------------------------------------------------
 
-    let saveButton = null;
+    function updateSaveBar() {
+        saveBar.hidden = !dirty();
+    }
 
-    function touched(message = 'Есть несохранённые изменения') {
+    function touched(message = '') {
         apply();
-        saveButton?.classList.toggle('wa-dirty', dirty());
+        updateSaveBar();
         status.textContent = message;
     }
 
@@ -282,76 +314,105 @@ function start() {
         }
         if (editingId && !store.themes[editingId]) editingId = null;
         picker.value = editingId || '';
+        picker.disabled = !list.length;
 
-        renderIcons();
+        renderBar();
+        renderAssign();
+        renderAsk();
+        updateSaveBar();
         renderContent();
     }
 
-    function renderIcons() {
-        icons.replaceChildren();
-        saveButton = null;
+    function renderBar() {
+        const plus = iconBtn('fa-plus', 'Новая тема из текущего оформления', createTheme, 'wa-plus');
+        menu = menuControl();
+        bar.replaceChildren(picker, plus, menu);
+    }
+
+    function menuControl() {
+        const details = el('details', 'wa-menu');
+        const summary = el('summary', 'wa-btn wa-icon-btn');
+        summary.title = 'Ещё';
+        summary.setAttribute('aria-label', 'Ещё');
+        summary.append(el('i', 'fa-solid fa-ellipsis'));
+
+        const list = el('div', 'wa-menu-list');
+        const item = (icon, text, fn, cls) => {
+            const button = btn('', () => { details.open = false; fn(); }, 'wa-menu-item' + (cls ? ' ' + cls : ''));
+            button.append(el('i', 'fa-solid fa-fw ' + icon), el('span', '', text));
+            return button;
+        };
+
+        list.append(item('fa-file-import', 'Загрузить из файла…', () => fileInput.click()));
 
         if (editingId) {
-            saveButton = iconBtn('fa-floppy-disk', 'Сохранить тему', saveTheme, 'wa-save');
-            saveButton.classList.toggle('wa-dirty', dirty());
-            icons.append(
-                saveButton,
-                iconBtn('fa-rotate-left', 'Отменить несохранённые правки', () => {
-                    drafts.delete(editingId);
+            const theme = store.themes[editingId];
+            list.append(
+                item('fa-file-export', 'Выгрузить в файл', exportTheme),
+                el('div', 'wa-menu-sep'),
+                item('fa-pencil', 'Переименовать', () => {
+                    const name = prompt('Название темы', theme.name);
+                    if (name === null) return;
+                    theme.name = normalizeName(name, theme.name);
+                    // Сохранение черновика не должно возвращать прежнее название.
+                    if (drafts.has(editingId)) drafts.get(editingId).name = theme.name;
+                    persist();
+                    render();
+                }),
+                item('fa-clone', 'Дублировать', () => {
+                    const id = newThemeId();
+                    store.themes[id] = normalizeTheme({
+                        ...(drafts.get(editingId) || theme),
+                        name: theme.name + ' (копия)',
+                    });
+                    editingId = id;
+                    persist();
                     render();
                     apply();
+                    status.textContent = 'Копия создана — её можно править отдельно';
                 }),
-                el('span', 'wa-sep'),
+                el('div', 'wa-menu-sep'),
+                item('fa-trash-can', 'Удалить тему', () => {
+                    if (!confirm(`Удалить тему «${theme.name}»?`)) return;
+                    delete store.themes[editingId];
+                    drafts.delete(editingId);
+                    for (const [key, id] of Object.entries(store.assignments)) {
+                        if (id === editingId) delete store.assignments[key];
+                    }
+                    if (store.defaultThemeId === editingId) store.defaultThemeId = null;
+                    editingId = themeIdFor(store, currentKey) || themeList()[0]?.[0] || null;
+                    persist();
+                    render();
+                    apply();
+                }, 'wa-danger'),
             );
         }
 
-        icons.append(importControl());
+        details.append(summary, list);
+        return details;
+    }
+
+    function renderAssign() {
+        assign.replaceChildren();
+        assign.hidden = !editingId;
         if (!editingId) return;
 
-        const theme = store.themes[editingId];
+        const toggleBtn = (icon, text, title, pressed, fn) => {
+            const button = btn('', fn, 'wa-toggle');
+            button.title = title;
+            button.setAttribute('aria-pressed', String(pressed));
+            button.append(el('i', 'fa-solid ' + icon), el('span', '', text));
+            return button;
+        };
 
-        icons.append(
-            iconBtn('fa-pencil', 'Переименовать', () => {
-                const name = prompt('Название темы', theme.name);
-                if (name === null) return;
-                theme.name = normalizeName(name, theme.name);
-                // Сохранение черновика не должно возвращать прежнее название.
-                if (drafts.has(editingId)) drafts.get(editingId).name = theme.name;
-                persist();
-                render();
-            }),
-            iconBtn('fa-clone', 'Дублировать', () => {
-                const id = newThemeId();
-                store.themes[id] = normalizeTheme({
-                    ...(drafts.get(editingId) || theme),
-                    name: theme.name + ' (копия)',
-                });
-                editingId = id;
-                persist();
-                render();
-                apply();
-            }),
-            iconBtn('fa-trash-can', 'Удалить тему', () => {
-                if (!confirm(`Удалить тему «${theme.name}»?`)) return;
-                delete store.themes[editingId];
-                drafts.delete(editingId);
-                for (const [key, id] of Object.entries(store.assignments)) {
-                    if (id === editingId) delete store.assignments[key];
-                }
-                if (store.defaultThemeId === editingId) store.defaultThemeId = null;
-                editingId = themeIdFor(store, currentKey) || themeList()[0]?.[0] || null;
-                persist();
-                render();
-                apply();
-            }, 'wa-danger'),
-            el('span', 'wa-sep'),
-        );
-
-        const assigned = currentKey && store.assignments[currentKey] === editingId;
-        const pin = iconBtn('fa-thumbtack',
-            currentKey
-                ? (assigned ? `Открепить от: ${characterName() || 'персонаж'}` : `Закрепить за: ${characterName() || 'персонаж'}`)
-                : 'В групповом чате закрепить нельзя',
+        // Имя не склоняем: «за Алиса» звучит хуже, чем «Закрепить · Алиса».
+        const who = characterName() || 'персонаж';
+        const assigned = !!currentKey && store.assignments[currentKey] === editingId;
+        const pin = toggleBtn('fa-thumbtack',
+            !currentKey ? 'Только в личном чате' : assigned ? `Закреплена · ${who}` : `Закрепить · ${who}`,
+            !currentKey ? 'В групповом чате применяется тема по умолчанию'
+                : assigned ? 'Нажми, чтобы открепить' : 'Эта тема будет включаться в чате с этим персонажем',
+            assigned,
             () => {
                 if (assigned) delete store.assignments[currentKey];
                 else store.assignments[currentKey] = editingId;
@@ -360,81 +421,125 @@ function start() {
                 apply();
             });
         pin.disabled = !currentKey;
-        pin.setAttribute('aria-pressed', String(!!assigned));
 
-        const star = iconBtn('fa-star', 'Тема по умолчанию', () => {
-            store.defaultThemeId = editingId;
-            persist();
-            render();
-            apply();
-        });
-        star.setAttribute('aria-pressed', String(store.defaultThemeId === editingId));
+        const isDefault = store.defaultThemeId === editingId;
+        const star = toggleBtn('fa-star', 'По умолчанию',
+            isDefault ? 'Нажми, чтобы снять' : 'Для персонажей без своей темы',
+            isDefault,
+            () => {
+                store.defaultThemeId = isDefault ? null : editingId;
+                persist();
+                render();
+                apply();
+            });
 
-        icons.append(pin, star, el('span', 'wa-sep'), exportBtn());
+        assign.append(pin, star);
     }
 
-    function exportBtn() {
-        return iconBtn('fa-file-export', 'Выгрузить тему в файл', () => {
-            const theme = normalizeTheme(drafts.get(editingId) || store.themes[editingId]);
-            const blob = new Blob([JSON.stringify({ format: 'wani-atelier', version: VERSION, theme }, null, 2)],
-                { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const link = el('a');
-            link.href = url;
-            link.download = 'atelier-' + theme.name.replace(/[^\wа-яё-]+/gi, '-').toLowerCase() + '.json';
-            link.click();
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-        });
+    // Снимаем то, что на экране без Atelier: на время чтения убираем класс,
+    // за которым висят его собственные подстановки.
+    function readPageVars() {
+        const enabled = document.body.classList.contains('wa-enabled');
+        document.body.classList.remove('wa-enabled');
+        try {
+            const style = getComputedStyle(document.body);
+            return snapshotVars(name => style.getPropertyValue(name));
+        } finally {
+            document.body.classList.toggle('wa-enabled', enabled);
+        }
+    }
+
+    function addTheme(theme, message) {
+        const id = newThemeId();
+        store.themes[id] = theme;
+        if (!store.defaultThemeId) store.defaultThemeId = id;
+        editingId = id;
+        pendingImport = null;
+        persist();
+        render();
+        apply();
+        status.textContent = message;
+    }
+
+    function createTheme() {
+        const who = characterName();
+        const name = prompt('Название новой темы\n\nВ неё попадёт оформление, которое сейчас на экране.',
+            who || 'Новая тема');
+        if (name === null) return;
+        const theme = normalizeTheme({ name: normalizeName(name, 'Новая тема'), vars: readPageVars() });
+        const count = Object.keys(theme.vars).length;
+        addTheme(theme, count
+            ? `Тема «${theme.name}» создана из текущего оформления, значений: ${count}`
+            : `Тема «${theme.name}» создана. Значения с экрана прочитать не удалось — можно загрузить файл через «⋯».`);
+    }
+
+    function exportTheme() {
+        const theme = normalizeTheme(drafts.get(editingId) || store.themes[editingId]);
+        const blob = new Blob([JSON.stringify({ format: 'wani-atelier', version: VERSION, theme }, null, 2)],
+            { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = el('a');
+        link.href = url;
+        link.download = 'atelier-' + theme.name.replace(/[^\wа-яё-]+/gi, '-').toLowerCase() + '.json';
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
     // Один файл покрывает половину картинки: цвета текста лежат в теме
     // Таверны, а обвязка — в пресете Moonlit. Поэтому импорт умеет
-    // дополнять уже открытую тему, а не только создавать новую.
-    function importControl() {
-        const input = el('input');
-        input.type = 'file';
-        input.accept = '.json';
-        input.id = 'wa-import';
-        input.onchange = async () => {
-            const file = input.files[0];
-            if (!file) return;
-            try {
-                if (file.size > 2000000) throw Error('Файл слишком большой');
-                const incoming = importTheme(JSON.parse(await file.text()));
-                const count = Object.keys(incoming.vars).length;
-                const open = editingId && store.themes[editingId];
-
-                if (open && confirm(
-                    `В файле «${incoming.name}»: ${count} значений.\n\n`
-                    + `ОК — добавить их в тему «${store.themes[editingId].name}».\n`
-                    + 'Отмена — создать отдельную тему.')) {
-                    const target = draft();
-                    Object.assign(target.vars, incoming.vars);
-                    if (incoming.background) target.background = incoming.background;
-                    apply();
-                    renderContent();
-                    status.textContent = `Добавлено значений: ${count}. Проверь и сохрани тему.`;
-                } else {
-                    const id = newThemeId();
-                    store.themes[id] = incoming;
-                    if (!store.defaultThemeId) store.defaultThemeId = id;
-                    editingId = id;
-                    persist();
-                    render();
-                    apply();
-                    status.textContent = `Тема «${incoming.name}» создана, значений: ${count}`;
-                }
-            } catch (e) {
-                status.textContent = e.message;
-            } finally {
-                input.value = '';
+    // дополнять уже открытую тему. Спрашиваем прямо в панели, тремя
+    // кнопками, а не через confirm(), где «Отмена» значила бы «создать».
+    async function onImportFile() {
+        const file = fileInput.files[0];
+        if (!file) return;
+        try {
+            if (file.size > 2000000) throw Error('Файл слишком большой');
+            const theme = importTheme(JSON.parse(await file.text()));
+            const count = Object.keys(theme.vars).length;
+            if (editingId && store.themes[editingId]) {
+                pendingImport = { theme, count };
+                renderAsk();
+                status.textContent = '';
+            } else {
+                addTheme(theme, `Тема «${theme.name}» создана, значений: ${count}`);
             }
-        };
-        const label = el('label', 'wa-btn wa-icon-btn');
-        label.htmlFor = 'wa-import';
-        label.title = 'Загрузить тему из файла (Таверна, Moonlit или Atelier)';
-        label.append(el('i', 'fa-solid fa-file-import'), input);
-        return label;
+        } catch (e) {
+            status.textContent = e.message;
+        } finally {
+            fileInput.value = '';
+        }
+    }
+
+    function renderAsk() {
+        ask.replaceChildren();
+        const target = editingId && store.themes[editingId];
+        ask.hidden = !pendingImport;
+        if (!pendingImport) return;
+
+        const { theme, count } = pendingImport;
+        ask.append(el('p', '', `Файл «${theme.name}»: значений ${count}. Что с ними сделать?`));
+
+        const actions = el('div', 'wa-actions');
+        if (target) {
+            actions.append(btn(`Добавить в «${target.name}»`, () => {
+                const into = draft();
+                Object.assign(into.vars, theme.vars);
+                if (theme.background) into.background = theme.background;
+                pendingImport = null;
+                renderAsk();
+                renderContent();
+                touched(`Добавлено значений: ${count}. Посмотри и сохрани.`);
+            }, 'wa-primary'));
+        }
+        actions.append(
+            btn('Новая тема', () => addTheme(theme, `Тема «${theme.name}» создана, значений: ${count}`)),
+            btn('Отмена', () => {
+                pendingImport = null;
+                renderAsk();
+                status.textContent = 'Загрузка отменена';
+            }),
+        );
+        ask.append(actions);
     }
 
     function renderContent() {
@@ -446,9 +551,12 @@ function start() {
         content.replaceChildren();
 
         if (!editingId) {
-            content.append(el('p', 'wa-help',
-                'Тем пока нет. Настрой оформление как обычно — в Таверне и в теме оформления, '
-                + 'выгрузи файл темы и загрузи его сюда. Дальше останется закрепить тему за персонажем.'));
+            content.append(
+                el('p', 'wa-help', 'Тем пока нет. Настрой оформление как обычно — в Таверне и в теме '
+                    + 'оформления, — и сохрани его как тему. Потом закрепишь её за персонажем.'),
+                btn('Создать тему из текущего оформления', createTheme, 'wa-primary wa-wide'),
+                el('p', 'wa-help', 'Готовый файл темы можно загрузить через «⋯».'),
+            );
             status.textContent = '';
             return;
         }
@@ -456,7 +564,8 @@ function start() {
         if (tab === 'theme') renderTheme();
         if (tab === 'background') renderAlbum();
 
-        status.textContent = dirty() ? 'Есть несохранённые изменения' : 'Все изменения сохранены';
+        updateSaveBar();
+        status.textContent = '';
     }
 
     // Половину темы можно выбросить целиком: например, оставить цвета
@@ -725,6 +834,11 @@ function start() {
     }
 
     window.addEventListener('wani-roleplay-tools:ready', connect, { signal: hostListeners.signal });
+
+    // Меню «⋯» закрывается щелчком мимо него.
+    document.addEventListener('pointerdown', e => {
+        if (menu?.open && !menu.contains(e.target)) menu.open = false;
+    }, { signal: hostListeners.signal });
 
     // При смене чата обязательна только подстановка стилей: она дешёвая.
     // Перерисовка панели со всеми строками и, если открыта вкладка «Фон», с
