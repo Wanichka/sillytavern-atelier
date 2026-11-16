@@ -1,110 +1,65 @@
 # Atelier — 0.8.0
 
-Оформление запоминается за персонажем и переключается вместе с ним.
+Atelier remembers the look of each character's chat and applies it when you switch characters.
 
-Atelier **не заменяет тему оформления**. Расположение портретов, ширина чата,
-вид панелей — всё это делает твоя тема (Moonlit Echoes или любая другая).
-Atelier запоминает снимок её настроек и подставляет их под персонажа.
+Atelier works with your existing SillyTavern theme, including Moonlit Echoes. It captures appearance settings so you can reuse them across character cards.
 
-Язык интерфейса меняется в меню **⋯ → Язык интерфейса**. Выбери **English** или **Русский**. Atelier запоминает выбор в настройках Таверны. Названия тем и файлов отображаются как записаны.
+Open **⋯ → Interface language** and choose **English** or **Русский**. Atelier saves your choice in SillyTavern's settings. Theme names and filenames appear as written.
 
-## Как этим пользоваться
+## Getting started
 
-1. Настрой оформление как обычно — в настройках Таверны и в своей теме.
-2. Выгрузи файл темы: в Таверне это `UI Theme` → экспорт, в Moonlit — своя
-   кнопка экспорта пресета.
-3. Загрузи файл в Atelier кнопкой импорта. Можно загрузить оба: тема Таверны
-   даёт цвета текста, подложки, границы и шрифт, пресет Moonlit — акцент, фон
-   окна чата, верхнюю панель, скроллбар, размеры и отступы. При загрузке
-   второго файла Atelier спросит, дополнить открытую тему или создать новую.
-4. Выбери фон и закрепи тему за персонажем.
+1. Set up your appearance as usual in SillyTavern and in your theme.
+2. Export a theme using **UI Theme** in SillyTavern or the preset export button in Moonlit Echoes.
+3. In Atelier, open **⋯ → Import from file…**. You can import both files. The SillyTavern theme contributes text colors, tints, borders, and font settings. The Moonlit preset contributes accent colors, the chat window background, the top bar, the scrollbar, sizes, and spacing. When you import the second file, choose whether to add it to the open theme or create a new one.
+4. Choose a background, click **Save** if you made changes, and use **Assign · [character name]** to assign the theme to the current character.
 
-Дальше просто открываешь чат — оформление подставляется само.
+Open the character's chat and Atelier applies the saved appearance automatically.
 
-## Что такое тема
+## How themes work
 
-Название, снимок CSS-переменных и фон. Своего списка настроек у Atelier нет:
-что пришло из файла, то и настраивается. Любое значение можно поправить на
-месте — цвета квадратиком с прозрачностью, остальное полем.
+An Atelier theme has a name, a set of CSS variables, and a background. The editor shows the settings available in your imported file or captured from the current page. Use the color swatch and opacity slider for colors, or the text field for other values.
 
-Одну тему можно закрепить за несколькими персонажами: правишь один раз,
-меняется у всех. Нужна отдельная — «Дублировать». Персонажу без закреплённой
-темы применяется тема по умолчанию (звёздочка).
+You can assign one theme to several characters. Changes to a shared theme apply to every character that uses it. Use **⋯ → Duplicate** to make a separate copy. The star button marks a **Default theme** for characters without an assigned theme.
 
-Персонаж определяется файлом аватарки, поэтому двадцать карточек с именем «Ло»
-не путаются между собой.
+Atelier identifies character cards by their avatar filenames, so two cards named “Law” can have separate themes.
 
-## Форматы импорта
+## Import formats
 
-| Файл | Как узнаётся | Что берётся |
+| File | Recognized by | What Atelier imports |
 | --- | --- | --- |
-| Тема Таверны | есть `main_text_color` | десять цветов `--SmartTheme*` и объявления переменных из `custom_css` |
-| Пресет Moonlit | есть `moonlitEchoesPreset` | все строковые значения из `settings` как переменные `--<ключ>` |
-| Тема Atelier | `format: wani-atelier` | как есть |
+| SillyTavern UI theme | `main_text_color` | Ten `--SmartTheme*` colors and supported CSS variable declarations from `custom_css` |
+| Moonlit Echoes preset | `moonlitEchoesPreset` | Supported string values from `settings` as `--<key>` variables |
+| Atelier theme | `format: wani-atelier` | The theme's saved values and background |
 
-Не берётся: раскладка и поведение (ширина чата, стиль сообщений, стиль
-аватарок), логические переключатели темы оформления, `rawCustomCss`. Это общие
-настройки, они не переключаются под персонажа.
+Chat width, message layouts, avatar styles, theme toggles, and `rawCustomCss` remain global settings. Atelier validates CSS values before applying them and rejects semicolons, braces, comments, and `@import`.
 
-Значения проверяются перед подстановкой в CSS: отклоняются точка с запятой,
-фигурные скобки, комментарии, `@import`.
+## Installation
 
-## Установка
+Place the `sillytavern-atelier` folder in `SillyTavern/public/scripts/extensions/third-party/` and reload the page. Turn on **Apply Atelier styling** to activate your assigned themes. Turn the same checkbox off to restore your regular appearance.
 
-Распакуй папку `sillytavern-atelier` в
-`SillyTavern/public/scripts/extensions/third-party/` и обнови страницу.
-Оформление не применяется, пока не включён флажок «Применять оформление
-Atelier» — он же снимает всё обратно.
+With Roleplay Tools installed, Atelier appears on the **Appearance** page (**Оформление** in Russian).
 
-Если стоит Roleplay Tools, редактор появится на странице «Оформление».
+## Upgrading from older versions
 
-## Настройки из прошлых версий
+Atelier carries over colors, tint opacity, font settings, and backgrounds from older versions. Migration drops older message and portrait layout overrides.
 
-Переносятся: цвета, прозрачность подложек, шрифт и фон превращаются в
-переменные. Настройки макетов сообщений и портретов отбрасываются — этим
-Atelier больше не занимается.
+## Scope
 
-## Что не входит
+Your SillyTavern theme controls portrait placement and size, message layouts, chat width, and the appearance of panels. Character catalogs are handled by a separate extension. Group chats use the default Atelier theme.
 
-Расположение и размеры портретов, макеты сообщений, ширина чата, общий вид
-панелей — это тема оформления. Каталог персонажей — отдельное расширение.
-В групповом чате применяется тема по умолчанию.
+## Fonts
 
-## Проверки
+Open **Theme → Fonts** in any editable theme to choose regular and monospace fonts. The controls are available even when the imported theme has no font settings.
 
-`npm test` — двенадцать тестов на настоящих файлах тем в `tests/fixtures`:
-импорт обоих форматов, дополнение одной темы двумя файлами, отбрасывание
-галок и раскладки, разбор `custom_css`, чтение цветов в `rgba` и `#rrggbb`,
-отклонение опасных значений и имён, перенос со старых версий, битые ссылки.
+- **Find a font…** filters the list. Selecting a font updates the sample text and the theme preview immediately. The **Font name** field accepts a CSS font stack such as `"Georgia", serif`. **Reset** clears the font override.
+- **From this computer** asks for browser permission when you click it. The button needs a browser and address that support the Local Font Access API. You can still enter a font name or upload a file. The common fonts list includes familiar font names and system defaults.
+- **Upload font** accepts TTF, OTF, WOFF, and WOFF2 files up to 10 MB. Uploading works without installing the font in Windows. Atelier shows the filename in the list and assigns the uploaded font a unique name so it can coexist with a system font of the same name. Each font file is a separate entry. Cyrillic support depends on the font.
+- Click **Save** to keep the font selection for the current theme. Atelier stores the uploaded file immediately and makes it available to other themes in the same browser.
+- Uploaded files live in IndexedDB for the current SillyTavern address. They survive a reload. They stay in the current browser and can be removed when site data is cleared. Theme JSON references the font by name. On another device, upload the original font file, choose it in the imported theme, and save the theme again.
+- **Delete file** removes the selected uploaded font. If a saved theme or another draft uses it, select a replacement in those themes and save them first. To remove an unused file, select it and click **Delete file** before saving that temporary selection.
 
+## Tests
 
-### Выбор шрифтов (0.6.0)
-
-В разделе «Тема» появился блок «Шрифты» для обычного и моноширинного текста.
-Он доступен в любой редактируемой теме, даже если импорт не содержал шрифтов.
-
-- Поиск фильтрует список. Выбор сразу обновляет образец на русском и английском
-  и предпросмотр активной темы. «Название вручную» принимает привычный CSS-список
-  вроде `"Georgia", serif`. «Сбросить» убирает переопределение шрифта из темы.
-- «С компьютера» запрашивает разрешение браузера только по нажатию. В браузерах
-  без Local Font Access API и на неподходящем адресе кнопка недоступна;
-  ручной ввод и загрузка файла продолжают работать. Стандартный список — это
-  распространённые названия и системные варианты, а не набор поставляемых файлов.
-- «Загрузить шрифт» принимает TTF, OTF, WOFF и WOFF2 до 10 МБ. Установка в Windows
-  не нужна. Имя файла отображается в списке; для применения используется отдельное
-  имя, чтобы не подменить одноимённый системный шрифт. Каждый файл начертания
-  добавляется отдельным пунктом. Поддержка кириллицы зависит от самого файла.
-- После выбора нажми «Сохранить тему». Файл сохраняется сразу, независимо от
-  сохранения темы, и доступен другим темам Atelier в этом браузере.
-- Файлы хранятся в IndexedDB браузера для текущего адреса Таверны. Они сохраняются
-  после перезагрузки, но не синхронизируются с другим браузером или устройством
-  и могут пропасть при очистке данных сайта. Экспорт JSON темы содержит только
-  ссылку на имя шрифта, а не его байты. Для переноса сохрани исходный файл,
-  загрузи его на новом устройстве, выбери его в импортированной теме и сохрани тему.
-- «Удалить файл» удаляет выбранный загруженный шрифт. Пока его использует сохранённая
-  тема или другой черновик, удаление блокируется: сначала выбери замену в этих темах
-  и сохрани их. Чтобы удалить уже неиспользуемый файл, выбери его в списке и нажми
-  «Удалить файл», не сохраняя этот временный выбор.
-
-Проверка логики шрифтов: `npm run test:fonts`. Проверки не требуют браузера;
-они используют подмену FontFace и хранилища и не проверяют реальный рендеринг шрифта.
+- `npm run check` checks JavaScript syntax.
+- `npm run test:fonts` runs the font tests using simulated storage and `FontFace`. A browser is only needed to verify how a font renders.
+- `npm test` includes tests for theme import, merging values, CSS validation, migration, and background fallbacks. The full suite requires the theme samples in `tests/fixtures`, which are currently missing from the repository.
