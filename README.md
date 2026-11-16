@@ -1,4 +1,4 @@
-# Atelier — 0.8.0
+# Atelier 
 
 Atelier remembers the look of each character's chat and applies it when you switch characters.
 
