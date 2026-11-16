@@ -6,6 +6,8 @@ Atelier works with your existing SillyTavern theme, including Moonlit Echoes. It
 
 Open **⋯ → Interface language** and choose **English** or **Русский**. Atelier saves your choice in SillyTavern's settings. Theme names and filenames appear as written.
 
+![Atelier's English theme editor with color swatches, opacity sliders, and theme and background tabs](docs/screenshots/atelier.png)
+
 ## Getting started
 
 1. Set up your appearance as usual in SillyTavern and in your theme.
