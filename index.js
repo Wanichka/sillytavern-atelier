@@ -1,3 +1,4 @@
+import { translate, russian } from './i18n.js';
 import { FONT_KEYS, FontLibrary, createFontStorage } from './fonts.js';
 import { createFontPicker } from './font-picker.js';
 import {
@@ -9,6 +10,7 @@ import {
 } from './core.js';
 
 const ctx = () => SillyTavern.getContext();
+const LANGUAGE_KEY = KEY + '_language';
 
 const el = (tag, cls, text) => {
     const node = document.createElement(tag);
@@ -39,11 +41,13 @@ function start() {
 
     const c = ctx();
     if (!c.extensionSettings || !c.saveSettingsDebounced) {
-        throw Error('Atelier: требуется API контекста SillyTavern');
+        throw Error(russian('contextRequired'));
     }
 
     // ---- состояние -------------------------------------------------------
 
+    let language = c.extensionSettings[LANGUAGE_KEY] === 'en' ? 'en' : 'ru';
+    const t = (key, values) => translate(language, key, values);
     let store = readStore(c.extensionSettings[KEY]);
     let currentKey = characterKey(c);
     let editingId = themeIdFor(store, currentKey);
@@ -56,7 +60,7 @@ function start() {
     let pendingImport = null;
 
     const drafts = new Map();
-    const fontLibrary = new FontLibrary(createFontStorage());
+    const fontLibrary = new FontLibrary(createFontStorage(window.indexedDB, t), window, t);
     let fontRows = new AbortController();
     let fontsExpanded = false;
     const hostListeners = new AbortController();
@@ -69,7 +73,7 @@ function start() {
     };
 
     const themeList = () => Object.entries(store.themes)
-        .sort((a, b) => a[1].name.localeCompare(b[1].name, 'ru'));
+        .sort((a, b) => a[1].name.localeCompare(b[1].name, language));
 
     function draft() {
         if (!editingId) return null;
@@ -90,9 +94,10 @@ function start() {
     panel.hidden = true;
 
     const header = el('header', 'wa-header');
+    const title = el('strong');
     const hostControls = el('span', 'wa-host-controls');
-    header.append(el('strong', '', 'Оформление · Atelier'), hostControls,
-        iconBtn('fa-xmark', 'Закрыть', () => toggle(false), 'wa-close'));
+    const close = iconBtn('fa-xmark', t('close'), () => toggle(false), 'wa-close');
+    header.append(title, hostControls, close);
 
     const body = el('div', 'wa-body');
 
@@ -107,10 +112,10 @@ function start() {
     };
     const enableLabel = el('label', 'wa-check');
     enableLabel.htmlFor = 'wa-enable';
-    enableLabel.append(enable, document.createTextNode('Применять оформление Atelier'));
+    const enableText = document.createTextNode('');
+    enableLabel.append(enable, enableText);
 
     const picker = el('select', 'wa-picker');
-    picker.setAttribute('aria-label', 'Редактируемая тема');
     picker.onchange = () => {
         editingId = picker.value || null;
         render();
@@ -126,18 +131,15 @@ function start() {
     ask.setAttribute('aria-live', 'polite');
 
     const saveBar = el('div', 'wa-savebar');
-    const saveBtn = btn('Сохранить', () => saveTheme(), 'wa-primary');
-    saveBtn.setAttribute('aria-label', 'Сохранить тему');
-    saveBar.append(
-        el('span', '', 'Есть несохранённые правки'),
-        saveBtn,
-        btn('Отменить', () => {
-            drafts.delete(editingId);
-            render();
-            apply();
-            status.textContent = 'Правки отменены';
-        }),
-    );
+    const saveBtn = btn('', () => saveTheme(), 'wa-primary');
+    const unsavedText = el('span');
+    const discard = btn('', () => {
+        drafts.delete(editingId);
+        render();
+        apply();
+        status.textContent = t('discarded');
+    });
+    saveBar.append(unsavedText, saveBtn, discard);
 
     const fileInput = el('input');
     fileInput.type = 'file';
@@ -147,7 +149,6 @@ function start() {
 
     let menu = null;
     const nav = el('nav', 'wa-tabs');
-    nav.setAttribute('aria-label', 'Разделы');
     const content = el('div', 'wa-content');
     const status = el('div', 'wa-status');
     status.setAttribute('aria-live', 'polite');
@@ -157,8 +158,6 @@ function start() {
 
     const launcher = btn('✦', () => toggle(), 'wa-launcher-btn');
     launcher.id = 'wa-launcher';
-    launcher.title = 'Atelier · оформление чата';
-    launcher.setAttribute('aria-label', launcher.title);
 
     const live = el('style');
     live.id = 'wa-live-style';
@@ -184,7 +183,7 @@ function start() {
         persist();
         render();
         apply();
-        status.textContent = 'Тема сохранена';
+        status.textContent = t('saved');
     }
 
     function field(label, control, extra) {
@@ -221,8 +220,8 @@ function start() {
         const color = parseColor(value);
 
         const row = el('div', 'wa-color');
-        const label = el('span', 'wa-color-label', labelFor(name));
-        if (labelFor(name) !== name) label.title = name;
+        const label = el('span', 'wa-color-label', labelFor(name, t));
+        if (label.textContent !== name) label.title = name;
         row.append(label);
 
         const line = el('div', 'wa-color-line');
@@ -236,7 +235,7 @@ function start() {
                 const next = input.value.trim();
                 if (!isSafeCssValue(next)) {
                     input.value = draft().vars[name];
-                    status.textContent = 'Такое значение использовать нельзя';
+                    status.textContent = t('invalidValue');
                     return;
                 }
                 draft().vars[name] = next;
@@ -273,7 +272,7 @@ function start() {
             const next = hex.value.trim();
             if (!/^#[0-9a-f]{6}$/i.test(next)) {
                 hex.value = swatch.value;
-                status.textContent = 'Цвет пишется как #rrggbb';
+                status.textContent = t('colorFormat');
                 return;
             }
             swatch.value = next;
@@ -288,8 +287,8 @@ function start() {
 
     // ---- вкладки ---------------------------------------------------------
 
-    for (const [id, label] of [['theme', 'Тема'], ['background', 'Фон']]) {
-        const button = btn(label, () => { tab = id; renderContent(); });
+    for (const id of ['theme', 'background']) {
+        const button = btn('', () => { tab = id; renderContent(); });
         button.dataset.tab = id;
         nav.append(button);
     }
@@ -298,17 +297,34 @@ function start() {
         return (ctx().characters || []).find(x => 'char:' + x.avatar === currentKey)?.name || null;
     }
 
+    function localizeControls() {
+        panel.lang = language;
+        title.textContent = t('title');
+        close.title = t('close');
+        close.setAttribute('aria-label', close.title);
+        enableText.textContent = t('enable');
+        picker.setAttribute('aria-label', t('editingTheme'));
+        saveBtn.textContent = t('save');
+        saveBtn.setAttribute('aria-label', t('saveTheme'));
+        unsavedText.textContent = t('unsaved');
+        discard.textContent = t('discard');
+        nav.setAttribute('aria-label', t('sections'));
+        for (const button of nav.querySelectorAll('button')) button.textContent = t(button.dataset.tab);
+        launcher.title = t('launcher');
+        launcher.setAttribute('aria-label', launcher.title);
+    }
+
     function render() {
         picker.replaceChildren();
         const list = themeList();
         if (!list.length) {
-            const option = el('option', '', '— тем пока нет —');
+            const option = el('option', '', t('noThemes'));
             option.value = '';
             picker.append(option);
         }
         for (const [id, theme] of list) {
             const option = el('option', '', theme.name
-                + (id === store.defaultThemeId ? ' · по умолчанию' : ''));
+                + (id === store.defaultThemeId ? t('defaultSuffix') : ''));
             option.value = id;
             picker.append(option);
         }
@@ -324,7 +340,7 @@ function start() {
     }
 
     function renderBar() {
-        const plus = iconBtn('fa-plus', 'Новая тема из текущего оформления', createTheme, 'wa-plus');
+        const plus = iconBtn('fa-plus', t('createSnapshot'), createTheme, 'wa-plus');
         menu = menuControl();
         bar.replaceChildren(picker, plus, menu);
     }
@@ -332,8 +348,8 @@ function start() {
     function menuControl() {
         const details = el('details', 'wa-menu');
         const summary = el('summary', 'wa-btn wa-icon-btn');
-        summary.title = 'Ещё';
-        summary.setAttribute('aria-label', 'Ещё');
+        summary.title = t('more');
+        summary.setAttribute('aria-label', t('more'));
         summary.append(el('i', 'fa-solid fa-ellipsis'));
 
         const list = el('div', 'wa-menu-list');
@@ -343,15 +359,15 @@ function start() {
             return button;
         };
 
-        list.append(item('fa-file-import', 'Загрузить из файла…', () => fileInput.click()));
+        list.append(item('fa-file-import', t('importFile'), () => fileInput.click()));
 
         if (editingId) {
             const theme = store.themes[editingId];
             list.append(
-                item('fa-file-export', 'Выгрузить в файл', exportTheme),
+                item('fa-file-export', t('exportFile'), exportTheme),
                 el('div', 'wa-menu-sep'),
-                item('fa-pencil', 'Переименовать', () => {
-                    const name = prompt('Название темы', theme.name);
+                item('fa-pencil', t('rename'), () => {
+                    const name = prompt(t('themeName'), theme.name);
                     if (name === null) return;
                     theme.name = normalizeName(name, theme.name);
                     // Сохранение черновика не должно возвращать прежнее название.
@@ -359,21 +375,21 @@ function start() {
                     persist();
                     render();
                 }),
-                item('fa-clone', 'Дублировать', () => {
+                item('fa-clone', t('duplicate'), () => {
                     const id = newThemeId();
                     store.themes[id] = normalizeTheme({
                         ...(drafts.get(editingId) || theme),
-                        name: theme.name + ' (копия)',
+                        name: theme.name + t('copySuffix'),
                     });
                     editingId = id;
                     persist();
                     render();
                     apply();
-                    status.textContent = 'Копия создана — её можно править отдельно';
+                    status.textContent = t('copied');
                 }),
                 el('div', 'wa-menu-sep'),
-                item('fa-trash-can', 'Удалить тему', () => {
-                    if (!confirm(`Удалить тему «${theme.name}»?`)) return;
+                item('fa-trash-can', t('deleteTheme'), () => {
+                    if (!confirm(t('deleteConfirm', { name: theme.name }))) return;
                     delete store.themes[editingId];
                     drafts.delete(editingId);
                     for (const [key, id] of Object.entries(store.assignments)) {
@@ -387,6 +403,29 @@ function start() {
                 }, 'wa-danger'),
             );
         }
+
+        const languageField = el('label', 'wa-menu-language');
+        const selection = el('select');
+        for (const [value, name] of [['ru', 'Русский'], ['en', 'English']]) {
+            const option = el('option', '', name);
+            option.value = value;
+            option.lang = value;
+            selection.append(option);
+        }
+        selection.value = language;
+        selection.onchange = () => {
+            language = selection.value;
+            ctx().extensionSettings[LANGUAGE_KEY] = language;
+            ctx().saveSettingsDebounced();
+            status.textContent = '';
+            albumError = '';
+            localizeControls();
+            render();
+            menu.open = true;
+            menu.querySelector('.wa-menu-language select').focus();
+        };
+        languageField.append(el('span', '', t('language')), selection);
+        list.append(el('div', 'wa-menu-sep'), languageField);
 
         details.append(summary, list);
         return details;
@@ -406,12 +445,12 @@ function start() {
         };
 
         // Имя не склоняем: «за Алиса» звучит хуже, чем «Закрепить · Алиса».
-        const who = characterName() || 'персонаж';
+        const who = characterName() || t('character');
         const assigned = !!currentKey && store.assignments[currentKey] === editingId;
         const pin = toggleBtn('fa-thumbtack',
-            !currentKey ? 'Только в личном чате' : assigned ? `Закреплена · ${who}` : `Закрепить · ${who}`,
-            !currentKey ? 'В групповом чате применяется тема по умолчанию'
-                : assigned ? 'Нажми, чтобы открепить' : 'Эта тема будет включаться в чате с этим персонажем',
+            !currentKey ? t('privateChatOnly') : assigned ? t('pinned', { name: who }) : t('pin', { name: who }),
+            !currentKey ? t('groupDefault')
+                : assigned ? t('unpinHint') : t('pinHint'),
             assigned,
             () => {
                 if (assigned) delete store.assignments[currentKey];
@@ -423,8 +462,8 @@ function start() {
         pin.disabled = !currentKey;
 
         const isDefault = store.defaultThemeId === editingId;
-        const star = toggleBtn('fa-star', 'По умолчанию',
-            isDefault ? 'Нажми, чтобы снять' : 'Для персонажей без своей темы',
+        const star = toggleBtn('fa-star', t('defaultTheme'),
+            isDefault ? t('unsetDefault') : t('defaultHint'),
             isDefault,
             () => {
                 store.defaultThemeId = isDefault ? null : editingId;
@@ -463,14 +502,14 @@ function start() {
 
     function createTheme() {
         const who = characterName();
-        const name = prompt('Название новой темы\n\nВ неё попадёт оформление, которое сейчас на экране.',
-            who || 'Новая тема');
+        const name = prompt(t('newThemePrompt'),
+            who || t('newTheme'));
         if (name === null) return;
-        const theme = normalizeTheme({ name: normalizeName(name, 'Новая тема'), vars: readPageVars() });
+        const theme = normalizeTheme({ name: normalizeName(name, t('newTheme')), vars: readPageVars() });
         const count = Object.keys(theme.vars).length;
         addTheme(theme, count
-            ? `Тема «${theme.name}» создана из текущего оформления, значений: ${count}`
-            : `Тема «${theme.name}» создана. Значения с экрана прочитать не удалось — можно загрузить файл через «⋯».`);
+            ? t('snapshotCreated', { name: theme.name, count })
+            : t('snapshotEmpty', { name: theme.name }));
     }
 
     function exportTheme() {
@@ -493,15 +532,21 @@ function start() {
         const file = fileInput.files[0];
         if (!file) return;
         try {
-            if (file.size > 2000000) throw Error('Файл слишком большой');
-            const theme = importTheme(JSON.parse(await file.text()));
+            if (file.size > 2000000) throw Error(t('fileTooLarge'));
+            let input;
+            try { input = JSON.parse(await file.text()); }
+            catch (error) {
+                if (error instanceof SyntaxError) throw Error(t('invalidJson'));
+                throw error;
+            }
+            const theme = importTheme(input, t);
             const count = Object.keys(theme.vars).length;
             if (editingId && store.themes[editingId]) {
                 pendingImport = { theme, count };
                 renderAsk();
                 status.textContent = '';
             } else {
-                addTheme(theme, `Тема «${theme.name}» создана, значений: ${count}`);
+                addTheme(theme, t('themeCreated', { name: theme.name, count }));
             }
         } catch (e) {
             status.textContent = e.message;
@@ -517,26 +562,26 @@ function start() {
         if (!pendingImport) return;
 
         const { theme, count } = pendingImport;
-        ask.append(el('p', '', `Файл «${theme.name}»: значений ${count}. Что с ними сделать?`));
+        ask.append(el('p', '', t('importChoice', { name: theme.name, count })));
 
         const actions = el('div', 'wa-actions');
         if (target) {
-            actions.append(btn(`Добавить в «${target.name}»`, () => {
+            actions.append(btn(t('mergeInto', { name: target.name }), () => {
                 const into = draft();
                 Object.assign(into.vars, theme.vars);
                 if (theme.background) into.background = theme.background;
                 pendingImport = null;
                 renderAsk();
                 renderContent();
-                touched(`Добавлено значений: ${count}. Посмотри и сохрани.`);
+                touched(t('merged', { count }));
             }, 'wa-primary'));
         }
         actions.append(
-            btn('Новая тема', () => addTheme(theme, `Тема «${theme.name}» создана, значений: ${count}`)),
-            btn('Отмена', () => {
+            btn(t('newTheme'), () => addTheme(theme, t('themeCreated', { name: theme.name, count }))),
+            btn(t('cancel'), () => {
                 pendingImport = null;
                 renderAsk();
-                status.textContent = 'Загрузка отменена';
+                status.textContent = t('importCanceled');
             }),
         );
         ask.append(actions);
@@ -552,10 +597,9 @@ function start() {
 
         if (!editingId) {
             content.append(
-                el('p', 'wa-help', 'Тем пока нет. Настрой оформление как обычно — в Таверне и в теме '
-                    + 'оформления, — и сохрани его как тему. Потом закрепишь её за персонажем.'),
-                btn('Создать тему из текущего оформления', createTheme, 'wa-primary wa-wide'),
-                el('p', 'wa-help', 'Готовый файл темы можно загрузить через «⋯».'),
+                el('p', 'wa-help', t('emptyHelp')),
+                btn(t('createThemeButton'), createTheme, 'wa-primary wa-wide'),
+                el('p', 'wa-help', t('importHelp')),
             );
             status.textContent = '';
             return;
@@ -573,12 +617,12 @@ function start() {
     function groupHeading(title, names) {
         const heading = el('div', 'wa-group');
         heading.append(el('h5', 'wa-subtitle', title));
-        heading.append(iconBtn('fa-trash-can', `Убрать все значения: ${title.toLowerCase()}`, () => {
-            if (!confirm(`Убрать из темы все значения (${names.length}) — ${title.toLowerCase()}?`)) return;
+        heading.append(iconBtn('fa-trash-can', t('removeGroup', { title: title.toLowerCase() }), () => {
+            if (!confirm(t('removeGroupConfirm', { count: names.length, title: title.toLowerCase() }))) return;
             for (const name of names) delete draft().vars[name];
             apply();
             renderContent();
-            status.textContent = `Убрано значений: ${names.length}. Проверь и сохрани тему.`;
+            status.textContent = t('removedValues', { count: names.length });
         }, 'wa-danger'));
         return heading;
     }
@@ -588,14 +632,14 @@ function start() {
         const other = allOther.filter(name => !FONT_KEYS.includes(name));
         const fontsSection = el('details', 'wa-fonts-section');
         fontsSection.open = fontsExpanded;
-        fontsSection.append(el('summary', '', 'Шрифты'));
+        fontsSection.append(el('summary', '', t('fonts')));
         fontsSection.addEventListener('toggle', () => {
             if (fontsSection.isConnected) fontsExpanded = fontsSection.open;
         });
         content.append(fontsSection);
         for (const name of FONT_KEYS) {
             fontsSection.append(createFontPicker({
-                name, label: labelFor(name), value: draft().vars[name], library: fontLibrary,
+                name, label: labelFor(name, t), value: draft().vars[name], library: fontLibrary, t,
                 signal: fontRows.signal,
                 onChange(value) {
                     if (value) draft().vars[name] = value;
@@ -609,21 +653,19 @@ function start() {
                 },
             }));
         }
-        fontsSection.append(el('p', 'wa-help', 'Стандартные варианты используют доступные браузеру шрифты. '
-            + 'Загруженные файлы хранятся в этом браузере для этого адреса Таверны; '
-            + 'в экспорт темы они не входят. Сохраняй исходные файлы отдельно.'));
+        fontsSection.append(el('p', 'wa-help', t('fontsHelp')));
 
         if (!smart.length && !other.length) {
-            content.append(el('p', 'wa-help', 'Других настроек оформления пока нет. Можно загрузить файл темы кнопкой импорта.'));
+            content.append(el('p', 'wa-help', t('noOtherSettings')));
             return;
         }
 
         if (smart.length) {
-            content.append(groupHeading('Из темы Таверны', smart));
+            content.append(groupHeading(t('fromTavern'), smart));
             for (const name of smart) content.append(varRow(name));
         }
         if (other.length) {
-            content.append(groupHeading('Из темы оформления', other));
+            content.append(groupHeading(t('fromAppearance'), other));
             for (const name of other) content.append(varRow(name));
         }
     }
@@ -633,14 +675,14 @@ function start() {
     function renderAlbum() {
         const top = el('div', 'wa-actions');
         top.append(
-            btn('Обновить альбом', () => loadAlbum()),
-            btn('Без своего фона', () => {
+            btn(t('refreshAlbum'), () => loadAlbum()),
+            btn(t('noCustomBackground'), () => {
                 draft().background = '';
                 touched();
                 renderContent();
             }),
         );
-        content.append(top, el('p', 'wa-help', 'Без своего фона тема берёт фон темы по умолчанию, а если и его нет — оставляет фон Таверны.'));
+        content.append(top, el('p', 'wa-help', t('backgroundHelp')));
 
         const upload = el('input');
         upload.type = 'file';
@@ -649,7 +691,7 @@ function start() {
         upload.id = 'wa-bg-upload';
         const uploadLabel = el('label', 'wa-btn');
         uploadLabel.htmlFor = 'wa-bg-upload';
-        uploadLabel.textContent = busy ? 'Загрузка…' : 'Загрузить в альбом Таверны';
+        uploadLabel.textContent = busy ? t('uploading') : t('uploadBackground');
         content.append(uploadLabel, upload);
 
         upload.onchange = async () => {
@@ -666,13 +708,13 @@ function start() {
                     headers: ctx().getRequestHeaders({ omitContentType: true }),
                     body: form,
                 });
-                if (!res.ok) throw Error('Ошибка загрузки ' + res.status);
+                if (!res.ok) throw Error(t('uploadError', { status: res.status }));
                 const name = await res.text();
                 if (!drafts.has(owner)) drafts.set(owner, normalizeTheme(store.themes[owner]));
                 drafts.get(owner).background = name;
                 busy = false;
                 await loadAlbum();
-                status.textContent = 'Фон загружен. Сохрани тему, чтобы закрепить.';
+                status.textContent = t('backgroundUploaded');
             } catch (e) {
                 status.textContent = e.message;
             } finally {
@@ -682,7 +724,7 @@ function start() {
         };
 
         if (album === null) {
-            content.append(el('p', 'wa-help', albumError || 'Загрузка альбома…'));
+            content.append(el('p', 'wa-help', albumError || t('loadingAlbum')));
             if (!busy && !albumError) void loadAlbum();
         } else {
             const grid = el('div', 'wa-album');
@@ -709,11 +751,11 @@ function start() {
         }
 
         if (draft().background && album && !album.includes(draft().background)) {
-            content.append(el('p', 'wa-warning', 'Фон недоступен — будет использован запасной.'));
+            content.append(el('p', 'wa-warning', t('missingBackground')));
         }
 
         const fit = el('select');
-        for (const [value, name] of [['cover', 'Заполнить экран'], ['contain', 'Показать целиком']]) {
+        for (const [value, name] of [['cover', t('cover')], ['contain', t('contain')]]) {
             const option = el('option', '', name);
             option.value = value;
             fit.append(option);
@@ -721,7 +763,7 @@ function start() {
         fit.value = draft().fit;
         fit.onchange = () => { draft().fit = fit.value; touched(); };
 
-        content.append(field('Масштаб', fit), range('Затемнение', 'dim', 0, 85), range('Размытие', 'blur', 0, 12));
+        content.append(field(t('scale'), fit), range(t('dim'), 'dim', 0, 85), range(t('blur'), 'blur', 0, 12));
     }
 
     async function loadAlbum() {
@@ -734,8 +776,8 @@ function start() {
                 headers: ctx().getRequestHeaders(),
                 body: '{}',
             });
-            if (!res.ok) throw Error('Альбом недоступен: ' + res.status);
-            album = backgroundNames(await res.json());
+            if (!res.ok) throw Error(t('albumUnavailable', { status: res.status }));
+            album = backgroundNames(await res.json(), t);
         } catch (e) {
             albumError = e.message;
             status.textContent = albumError;
@@ -808,7 +850,7 @@ function start() {
             return;
         }
         if (value === false && dirty()
-            && !confirm('Закрыть редактор? Несохранённые правки останутся до перезагрузки.')) return;
+            && !confirm(t('closeUnsaved'))) return;
         open = value ?? !open;
         panel.hidden = !open;
         reserve();
@@ -820,8 +862,8 @@ function start() {
         if (host?.version !== 1) return;
         host.register({
             id: 'atelier',
-            title: 'Atelier · Оформление',
-            defaultPage: { id: 'appearance', name: 'Оформление' },
+            title: t('dockTitle'),
+            defaultPage: { id: 'appearance', name: t('appearance') },
             element: panel,
             launcher,
             controls: hostControls,
@@ -885,6 +927,7 @@ function start() {
         }
     }, true);
 
+    localizeControls();
     render();
     apply();
     connect();

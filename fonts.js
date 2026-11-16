@@ -1,3 +1,4 @@
+import { russian } from './i18n.js';
 import { isSafeCssValue } from './core.js';
 
 export const FONT_KEYS = ['--mainFontFamily', '--monoFontFamily'];
@@ -25,21 +26,21 @@ export function uniqueFamilies(fonts) {
     return [...names.values()].sort((a, b) => a.localeCompare(b));
 }
 
-export function validateFontFile(file) {
-    if (!/\.(ttf|otf|woff2?)$/i.test(file.name)) throw Error('Выбери файл TTF, OTF, WOFF или WOFF2.');
-    if (!file.size || file.size > MAX_FONT_BYTES) throw Error('Размер шрифта должен быть от 1 байта до 10 МБ.');
+export function validateFontFile(file, t = russian) {
+    if (!/\.(ttf|otf|woff2?)$/i.test(file.name)) throw Error(t('fontFormat'));
+    if (!file.size || file.size > MAX_FONT_BYTES) throw Error(t('fontSize'));
 }
 
 // Font binaries are separate from SillyTavern settings and chat metadata.
-export function createFontStorage(indexedDB = window.indexedDB) {
+export function createFontStorage(indexedDB = window.indexedDB, t = russian) {
     let opening;
     function open() {
-        if (!indexedDB) return Promise.reject(Error('Браузер не позволяет сохранять файлы шрифтов.'));
+        if (!indexedDB) return Promise.reject(Error(t('fontStorageBlocked')));
         return opening ||= new Promise((resolve, reject) => {
             const request = indexedDB.open('wani-atelier-fonts', 1);
             request.onupgradeneeded = () => request.result.createObjectStore('fonts', { keyPath: 'id' });
             request.onerror = () => { opening = null; reject(request.error); };
-            request.onblocked = () => { opening = null; reject(Error('Закрой другие вкладки Таверны и повтори загрузку.')); };
+            request.onblocked = () => { opening = null; reject(Error(t('fontStorageBusy'))); };
             request.onsuccess = () => {
                 const db = request.result;
                 db.onversionchange = () => { db.close(); opening = null; };
@@ -53,7 +54,7 @@ export function createFontStorage(indexedDB = window.indexedDB) {
             const tx = db.transaction('fonts', mode);
             const request = operation(tx.objectStore('fonts'));
             tx.oncomplete = () => resolve(request.result);
-            tx.onabort = () => reject(tx.error || request.error || Error('Не удалось сохранить шрифт.'));
+            tx.onabort = () => reject(tx.error || request.error || Error(t('cannotSaveFont')));
             tx.onerror = () => {}; // onabort reports the transaction failure.
         });
     }
@@ -63,13 +64,18 @@ export function createFontStorage(indexedDB = window.indexedDB) {
 }
 
 export class FontLibrary extends EventTarget {
-    constructor(storage, env = window) {
+    constructor(storage, env = window, t = russian) {
         super();
         this.storage = storage;
+        this.t = t;
         this.env = env;
         this.uploaded = new Map();
         this.local = [];
-        this.warning = '';
+        this.restoreIssue = null;
+    }
+    get warning() {
+        if (!this.restoreIssue) return '';
+        return this.t(this.restoreIssue.key, this.restoreIssue.values);
     }
     notify() { this.dispatchEvent(new Event('change')); }
     async restore() {
@@ -84,13 +90,13 @@ export class FontLibrary extends EventTarget {
                     this.uploaded.set(record.id, { ...record, face });
                 } catch { failed++; }
             }
-            if (failed) this.warning = `Не удалось восстановить шрифтов: ${failed}. Загрузи их заново.`;
-        } catch { this.warning = 'Сохранённые шрифты недоступны. Проверь разрешение браузера на хранение данных.'; }
+            this.restoreIssue = failed ? { key: 'fontRestoreFailed', values: { count: failed } } : null;
+        } catch { this.restoreIssue = { key: 'savedFontsUnavailable' }; }
         this.notify();
     }
     async loadLocal() {
         if (!this.env.isSecureContext || typeof this.env.queryLocalFonts !== 'function') {
-            throw Error('Список шрифтов компьютера здесь недоступен. Используй ручной ввод или загрузку файла.');
+            throw Error(this.t('localFontsUnsupported'));
         }
         // Invoke directly from the user's click, before any other async work.
         const fonts = await this.env.queryLocalFonts();
@@ -98,17 +104,17 @@ export class FontLibrary extends EventTarget {
         this.notify();
     }
     async upload(file) {
-        validateFontFile(file);
+        validateFontFile(file, this.t);
         const data = await file.arrayBuffer();
         const bytes = this.env.crypto.getRandomValues(new Uint8Array(16));
         const id = 'Atelier_' + [...bytes].map(x => x.toString(16).padStart(2, '0')).join('');
         const label = file.name.replace(/\.(ttf|otf|woff2?)$/i, '').slice(0, 100);
         const face = new this.env.FontFace(id, data);
-        try { await face.load(); } catch { throw Error('Браузер не смог прочитать этот шрифт. Проверь файл и формат.'); }
+        try { await face.load(); } catch { throw Error(this.t('cannotReadFont')); }
         const record = { id, label, fileName: file.name, data };
         // Only apply the font after its bytes have actually been committed.
         try { await this.storage.put(record); }
-        catch { throw Error('Не удалось сохранить файл шрифта. Проверь свободное место и разрешения браузера.'); }
+        catch { throw Error(this.t('fontSaveFailed')); }
         this.env.document.fonts.add(face);
         this.uploaded.set(id, { ...record, face });
         this.notify();

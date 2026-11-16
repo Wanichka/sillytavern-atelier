@@ -1,3 +1,5 @@
+import { russian } from './i18n.js';
+
 /* =========================================================================
    Wani Atelier — модель данных.
 
@@ -16,16 +18,16 @@ export const VERSION = 3;
 
 // Поля штатной темы Таверны → её же CSS-переменные.
 export const ST_COLORS = {
-    main_text_color: ['--SmartThemeBodyColor', 'Основной текст'],
-    quote_text_color: ['--SmartThemeQuoteColor', 'Реплики'],
-    italics_text_color: ['--SmartThemeEmColor', 'Курсив'],
-    underline_text_color: ['--SmartThemeUnderlineColor', 'Подчёркивание'],
-    shadow_color: ['--SmartThemeShadowColor', 'Тень текста'],
-    border_color: ['--SmartThemeBorderColor', 'Границы'],
-    blur_tint_color: ['--SmartThemeBlurTintColor', 'Панели'],
-    chat_tint_color: ['--SmartThemeChatTintColor', 'Слой под чатом'],
-    user_mes_blur_tint_color: ['--SmartThemeUserMesBlurTintColor', 'Мои сообщения'],
-    bot_mes_blur_tint_color: ['--SmartThemeBotMesBlurTintColor', 'Сообщения персонажа'],
+    main_text_color: ['--SmartThemeBodyColor', 'bodyText'],
+    quote_text_color: ['--SmartThemeQuoteColor', 'quotes'],
+    italics_text_color: ['--SmartThemeEmColor', 'italics'],
+    underline_text_color: ['--SmartThemeUnderlineColor', 'underline'],
+    shadow_color: ['--SmartThemeShadowColor', 'textShadow'],
+    border_color: ['--SmartThemeBorderColor', 'borders'],
+    blur_tint_color: ['--SmartThemeBlurTintColor', 'panels'],
+    chat_tint_color: ['--SmartThemeChatTintColor', 'chatTint'],
+    user_mes_blur_tint_color: ['--SmartThemeUserMesBlurTintColor', 'userMessages'],
+    bot_mes_blur_tint_color: ['--SmartThemeBotMesBlurTintColor', 'characterMessages'],
 };
 
 // Белый список: в тему попадают только эти переменные. Всё остальное из
@@ -33,20 +35,20 @@ export const ST_COLORS = {
 // портретов для её собственных макетов, анимации), под персонажа это не
 // переключают, а место в редакторе занимает.
 export const LABELS = {
-    '--mainFontFamily': 'Шрифт',
-    '--monoFontFamily': 'Моношрифт',
-    '--customThemeColor': 'Акцент',
-    '--customThemeColor2': 'Второй акцент',
-    '--customTopBarColor': 'Верхняя панель',
-    '--Drawer-iconColor': 'Иконки меню',
-    '--customBgColor1': 'Фон меню',
-    '--customBgColor2': 'Фон меню, второй',
-    '--sheldBackgroundColor': 'Фон окна чата',
-    '--sheldBlurStrength': 'Размытие окна чата',
-    '--customScrollbarColor': 'Полоса прокрутки',
-    '--messageTextFontSize': 'Размер текста',
-    '--mesParagraphSpacingTop': 'Отступ абзаца сверху',
-    '--mesParagraphSpacingBottom': 'Отступ абзаца снизу',
+    '--mainFontFamily': 'mainFont',
+    '--monoFontFamily': 'monoFont',
+    '--customThemeColor': 'accent',
+    '--customThemeColor2': 'secondAccent',
+    '--customTopBarColor': 'topBar',
+    '--Drawer-iconColor': 'menuIcons',
+    '--customBgColor1': 'menuBackground',
+    '--customBgColor2': 'secondMenuBackground',
+    '--sheldBackgroundColor': 'chatBackground',
+    '--sheldBlurStrength': 'chatBlur',
+    '--customScrollbarColor': 'scrollbar',
+    '--messageTextFontSize': 'textSize',
+    '--mesParagraphSpacingTop': 'paragraphTop',
+    '--mesParagraphSpacingBottom': 'paragraphBottom',
 };
 
 export const ALLOWED = new Set([
@@ -132,23 +134,23 @@ function fromMoonlitPreset(data) {
     return { name: data.presetName, vars };
 }
 
-export function importTheme(data) {
-    if (!data || typeof data !== 'object') throw Error('Файл не похож на тему');
+export function importTheme(data, t = russian) {
+    if (!data || typeof data !== 'object') throw Error(t('notATheme'));
 
     if (data.format === 'wani-atelier' && data.theme) {
-        return normalizeTheme(data.theme);
+        return normalizeTheme(data.theme, t('untitled'));
     }
     if (data.moonlitEchoesPreset) {
         const { name, vars } = fromMoonlitPreset(data);
-        if (!Object.keys(vars).length) throw Error('В пресете Moonlit нет значений для темы');
-        return normalizeTheme({ name, vars });
+        if (!Object.keys(vars).length) throw Error(t('noMoonlitValues'));
+        return normalizeTheme({ name, vars }, t('untitled'));
     }
     if (typeof data.main_text_color === 'string') {
         const { name, vars } = fromSillyTavernTheme(data);
-        if (!Object.keys(vars).length) throw Error('В теме Таверны нет цветов');
-        return normalizeTheme({ name, vars });
+        if (!Object.keys(vars).length) throw Error(t('noTavernColors'));
+        return normalizeTheme({ name, vars }, t('untitled'));
     }
-    throw Error('Не узнаю формат: нужна тема Таверны, пресет Moonlit или тема Atelier');
+    throw Error(t('unknownTheme'));
 }
 
 // Снимок того, что сейчас на экране. Таверна и тема оформления уже
@@ -175,8 +177,8 @@ export function normalizeName(value, fallback = 'Без названия') {
     return name || fallback;
 }
 
-export function normalizeTheme(data = {}) {
-    const theme = { name: normalizeName(data?.name), vars: {}, ...BACKGROUND };
+export function normalizeTheme(data = {}, fallbackName) {
+    const theme = { name: normalizeName(data?.name, fallbackName), vars: {}, ...BACKGROUND };
     if (!data || typeof data !== 'object') return theme;
 
     for (const [name, value] of Object.entries(data.vars || {})) {
@@ -316,9 +318,9 @@ export function backgroundUrl(name) {
     return name ? '/backgrounds/' + encodeURIComponent(name) : '';
 }
 
-export function backgroundNames(data) {
+export function backgroundNames(data, t = russian) {
     const list = Array.isArray(data) ? data : data?.images;
-    if (!Array.isArray(list)) throw Error('Неизвестный формат альбома фонов');
+    if (!Array.isArray(list)) throw Error(t('unknownAlbum'));
     return list
         .map(item => (typeof item === 'string' ? item : item?.filename))
         .filter(name => typeof name === 'string');
@@ -344,6 +346,7 @@ export function groupVars(theme) {
     return { smart, other };
 }
 
-export function labelFor(name) {
-    return LABELS[name] || Object.values(ST_COLORS).find(([v]) => v === name)?.[1] || name;
+export function labelFor(name, t = russian) {
+    const key = LABELS[name] || Object.values(ST_COLORS).find(([variable]) => variable === name)?.[1];
+    return key ? t(key) : name;
 }

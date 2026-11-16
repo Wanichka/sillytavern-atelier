@@ -148,6 +148,21 @@
     background: color-mix(in srgb, var(--SmartThemeQuoteColor, #cd956c) 16%, transparent);
 }
 #wa-editor .wa-menu-item i { opacity: .8; }
+#wa-editor .wa-menu-language {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 5px 8px;
+}
+#wa-editor .wa-menu-language select {
+    font: inherit;
+    color: inherit;
+    background: var(--SmartThemeBlurTintColor, #121c21);
+    border: 1px solid var(--SmartThemeBorderColor, #405057);
+    border-radius: 5px;
+    padding: 4px;
+}
 #wa-editor .wa-menu-sep {
     height: 1px;
     margin: 4px 6px;
